@@ -38,8 +38,8 @@ the client as their need becomes apparent. For instance, you may wish to `push`
 out a stylesheet link tag only if a particular partial is reached which contains
 a complex widget.
 
-[fast-profile]: http://github.com/oggy/template_streaming/tree/master/doc/fast-profile.png
-[slow-profile]: http://github.com/oggy/template_streaming/tree/master/doc/slow-profile.png
+[fast-profile]: http://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png
+[slow-profile]: http://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png
 
 ## Example
 
