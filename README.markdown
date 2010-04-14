@@ -6,11 +6,7 @@ Rails plugin which enables progressive rendering for templates.
 
 A typical Rails client-side profile looks something like this:
 
-<img
-  alt="Typical Rails Profile"
-  src="http://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png"
-  style="width: 100%"
-/>
+![Typical Rails Profile][slow-profile]
 
 In almost all cases, this is highly suboptimal, as many resources, such as
 external stylesheets, are static and could be loaded by the client while it's
@@ -35,16 +31,15 @@ and its content. By using the provided `flush` helper prior to yielding in the
 prelayout, one can now output content early in the rendering process, giving
 profiles that look more like:
 
-<img
-  alt="Progressive Rendering Profile"
-  src="http://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png"
-  style="width: 100%"
-/>
+![Progressive Rendering Profile][fast-profile]
 
 Also provided is a `#push(data)` method which can be used to send extra tags to
 the client as their need becomes apparent. For instance, you may wish to `push`
 out a stylesheet link tag only if a particular partial is reached which contains
 a complex widget.
+
+[slow-profile]: http://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png
+[fast-profile]: http://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png
 
 ## Example
 
