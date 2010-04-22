@@ -12,6 +12,7 @@ module TemplateStreaming
       begin
         if @render_stack_height == 1
           @performed_render = true
+          check_thin_support
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
             @performed_render = false
             last_piece = render_without_template_streaming(*args, &block)
@@ -44,6 +45,7 @@ module TemplateStreaming
     #
     def push(data)
       @streaming_body.push(data)
+      flush_thin
     end
 
     private # --------------------------------------------------------
@@ -67,6 +69,26 @@ module TemplateStreaming
       else
         0
       end
+    end
+
+    def check_thin_support
+      return if defined?(@thin_support_found)
+      if (@thin_callback = request.env['async.callback'])
+        begin
+          require 'event_machine_flush'
+          @thin_support_found = true
+        rescue LoadError
+          raise "Template Streaming on Thin requires the event_machine_flush gem."
+        end
+      end
+    end
+
+    #
+    # Force EventMachine to flush its buffer when using Thin.
+    #
+    def flush_thin
+      @thin_callback and
+        EventMachineFlush.flush(@thin_callback.receiver)
     end
   end
 
