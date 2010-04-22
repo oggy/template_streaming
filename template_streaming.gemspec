@@ -12,9 +12,8 @@ Gem::Specification.new do |s|
   s.homepage    = "http://github.com/oggy/template_streaming"
   s.summary     = "Rails plugin which enables progressive rendering."
   s.description = <<-EOS.gsub(/^ *\|/, '')
-    |Adds a #flush helper to Rails which lets you flush the output
-    |buffer to the client early, allowing the client to begin fetching
-    |external resources while the server is rendering the page.
+    |Adds a #flush helper to Rails which flushes the output buffer to
+    |the client early.
   EOS
 
   s.required_rubygems_version = ">= 1.3.6"
