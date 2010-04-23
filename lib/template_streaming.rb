@@ -6,11 +6,8 @@ module TemplateStreaming
     end
 
     def render_with_template_streaming(*args, &block)
-      # Only install our StreamingBody in the toplevel #render call.
-      @render_stack_height ||= 0
-      @render_stack_height += 1
-      begin
-        if @render_stack_height == 1
+      with_template_streaming_condition(*args) do |condition|
+        if condition
           @performed_render = true
           check_thin_support
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
@@ -25,8 +22,6 @@ module TemplateStreaming
         else
           render_without_template_streaming(*args, &block)
         end
-      ensure
-        @render_stack_height -= 1
       end
     end
 
@@ -49,6 +44,30 @@ module TemplateStreaming
     end
 
     private # --------------------------------------------------------
+
+    #
+    # Yield true if we should intercept this render call, false
+    # otherwise.
+    #
+    def with_template_streaming_condition(*args)
+      @render_stack_height ||= 0
+      @render_stack_height += 1
+      begin
+        # Only install our StreamingBody in the toplevel #render call.
+        @render_stack_height == 1 or
+          return yield(false)
+
+        if (options = args.last).is_a?(Hash)
+          yield((UNSTREAMABLE_KEYS & options.keys).empty?)
+        else
+          yield(args.first != :update)
+        end
+      ensure
+        @render_stack_height -= 1
+      end
+    end
+
+    UNSTREAMABLE_KEYS = [:text, :xml, :json, :js, :update, :nothing]
 
     #
     # The number of bytes that must be received by the client before
