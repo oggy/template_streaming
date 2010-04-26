@@ -1,3 +1,8 @@
+== LATEST
+
+ * Add when_streaming_template callback. Called after an action that
+   streams a template.
+
 == 0.0.3 2010-04-23
 
  * Fix #render calls which don't render templates (e.g. :text => '').

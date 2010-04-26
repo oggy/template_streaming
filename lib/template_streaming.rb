@@ -1,8 +1,13 @@
 module TemplateStreaming
   module Controller
     def self.included(base)
-      base.alias_method_chain :render, :template_streaming
-      base.helper_method :flush, :push
+      base.class_eval do
+        alias_method_chain :render, :template_streaming
+        helper_method :flush, :push
+
+        include ActiveSupport::Callbacks
+        define_callbacks :when_streaming_template
+      end
     end
 
     def render_with_template_streaming(*args, &block)
@@ -19,6 +24,7 @@ module TemplateStreaming
           end
           response.body = @streaming_body
           response.prepare!
+          run_callbacks :when_streaming_template
         else
           render_without_template_streaming(*args, &block)
         end
