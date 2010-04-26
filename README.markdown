@@ -33,13 +33,49 @@ profiles that look more like:
 
 ![Progressive Rendering Profile][fast-profile]
 
-Also provided is a `#push(data)` method which can be used to send extra tags to
-the client as their need becomes apparent. For instance, you may wish to `push`
-out a stylesheet link tag only if a particular partial is reached which contains
-a complex widget.
-
 [slow-profile]: http://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png
 [fast-profile]: http://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png
+
+## API
+
+The API is simple, but it's important to understand the change in control flow
+when a template is streamed. A controller's `render` no longer results in
+rendering templates immediately; instead, `response.body` is set to a
+`StreamingBody` object which will render the template when the server calls
+`#each` on the body *after* the action returns, as per the Rack specification.
+This has several implications:
+
+ * Anything that needs to inspect or modify the body should be moved to a
+   middleware.
+ * Modifications to cookies (this includes the flash and session if using the
+   cookie store!) should not be made in the view.
+ * An exception during rendering cannot simply replace the body with a
+   stacktrace or 500 page. (Solution to come.)
+
+### Helpers
+
+ * `flush` - flush what has been rendered in the current template out to the
+    client immediately.
+ * `push(data)` - send the given data to the client immediately.
+
+These can only do their job if the underlying web server supports progressive
+rendering via Rack. This has been tested successfully with [Mongrel][mongrel]
+and [Passenger][passenger]. [Thin][thin] is only supported if the [Event Machine
+Flush][event-machine-flush] gem is installed. WEBrick does not support
+progressive rendering. [Please send me][contact] reports of success with other
+web servers!
+
+[mongrel]: http://github.com/fauna/mongrel
+[passenger]: http://www.modrails.com
+[thin]: http://github.com/macournoyer/thin
+[event-machine-flush]: http://github.com/oggy/event_machine_flush
+[contact]: mailto:george.ogata@gmail.com
+
+### Controller
+
+ * `when_streaming_template` - defines a callback to be called during a `render`
+   call when a template is streamed. This is *before* the body is rendered, or
+   any data is sent to the client.
 
 ## Example
 
