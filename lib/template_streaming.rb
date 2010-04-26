@@ -1,4 +1,16 @@
 module TemplateStreaming
+  class << self
+    def configure(config)
+      config.each do |key, value|
+        send "#{key}=", value
+      end
+    end
+
+    attr_accessor :autosweep_flash
+  end
+
+  self.autosweep_flash = true
+
   module Controller
     def self.included(base)
       base.class_eval do
@@ -24,7 +36,20 @@ module TemplateStreaming
           end
           response.body = @streaming_body
           response.prepare!
+          flash if TemplateStreaming.autosweep_flash
           run_callbacks :when_streaming_template
+
+          # Normally, @_flash is removed after #perform_action, which
+          # means calling #flash in the view would cause a new
+          # FlashHash to be constructed. On top of that, the flash is
+          # swept on construction, which results in sweeping the flash
+          # twice, obliterating its contents.
+          #
+          # So, we preserve the flash here under a different ivar, and
+          # override the #flash helper to return it.
+          if defined?(@_flash)
+            @template_streaming_flash = @_flash
+          end
         else
           render_without_template_streaming(*args, &block)
         end
@@ -47,6 +72,10 @@ module TemplateStreaming
     def push(data)
       @streaming_body.push(data)
       flush_thin
+    end
+
+    def template_streaming_flash # :nodoc:
+      @template_streaming_flash
     end
 
     private # --------------------------------------------------------
@@ -142,6 +171,7 @@ module TemplateStreaming
   module View
     def self.included(base)
       base.alias_method_chain :_render_with_layout, :template_streaming
+      base.alias_method_chain :flash, :template_streaming
     end
 
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
@@ -182,6 +212,11 @@ module TemplateStreaming
         return nil
       view_paths.find_template('pre' + layout.path_without_format_and_extension, layout.format)
     rescue ActionView::MissingTemplate
+    end
+
+    def flash_with_template_streaming # :nodoc:
+      # Override ActionView::Base#flash to prevent a double-sweep.
+      controller.instance_eval { @template_streaming_flash || flash }
     end
   end
 
