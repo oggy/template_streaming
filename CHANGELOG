@@ -1,4 +1,4 @@
-== LATEST
+== 0.0.4 2010-04-26
 
  * Add when_streaming_template callback. Called after an action that
    streams a template.
