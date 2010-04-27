@@ -25,8 +25,8 @@ module TemplateStreaming
     def render_with_template_streaming(*args, &block)
       with_template_streaming_condition(*args) do |condition|
         if condition
-          @performed_render = true
           check_thin_support
+          @performed_render = true
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
             @performed_render = false
             last_piece = render_without_template_streaming(*args, &block)
