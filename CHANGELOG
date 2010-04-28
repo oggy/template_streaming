@@ -1,3 +1,7 @@
+== LATEST
+
+ * Fix #render_to_string.
+
 == 0.0.5 2010-04-27
 
  * Automatically add Rack::Chunked to middleware stack.

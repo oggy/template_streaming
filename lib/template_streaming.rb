@@ -15,6 +15,7 @@ module TemplateStreaming
     def self.included(base)
       base.class_eval do
         alias_method_chain :render, :template_streaming
+        alias_method_chain :render_to_string, :template_streaming
         helper_method :flush, :push
 
         include ActiveSupport::Callbacks
@@ -53,6 +54,16 @@ module TemplateStreaming
         else
           render_without_template_streaming(*args, &block)
         end
+      end
+    end
+
+    # Override to ensure calling render_to_string from a helper
+    # doesn't trigger template streaming.
+    def render_to_string_with_template_streaming(*args, &block) # :nodoc
+      # Ensure renders within a render_to_string aren't considered
+      # top-level.
+      with_template_streaming_condition do
+        render_to_string_without_template_streaming(*args, &block)
       end
     end
 
