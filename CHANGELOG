@@ -1,3 +1,7 @@
+== LATEST
+
+ * Fix threshold when content type is not set before rendering.
+
 == 0.0.6 2010-04-28
 
  * Fix #render_to_string.

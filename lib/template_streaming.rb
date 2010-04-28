@@ -120,7 +120,8 @@ module TemplateStreaming
     # anything will be rendered.
     #
     def progressive_rendering_threshold
-      response.header['Content-type'] =~ %r'\Atext/html' or
+      content_type = response.header['Content-type']
+      content_type.nil? || content_type =~ %r'\Atext/html' or
         return 0
 
       case request.env['HTTP_USER_AGENT']
