@@ -263,5 +263,5 @@ module TemplateStreaming
   ActionView::Base.send :include, View
   ActionController::Base.send :include, Controller
   ActionController::Response.send :include, Response
-  ActionController::Dispatcher.middleware.use Rack::Chunked
+  ActionController::Dispatcher.middleware.insert 0, Rack::Chunked
 end

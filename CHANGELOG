@@ -1,3 +1,7 @@
+== LATEST
+
+ * Ensure Rack::Chunked is at the base of the middleware stack.
+
 == 0.0.7 2010-04-28
 
  * Fix threshold when content type is not set before rendering.
