@@ -26,7 +26,6 @@ module TemplateStreaming
     def render_with_template_streaming(*args, &block)
       with_template_streaming_condition(*args) do |condition|
         if condition
-          check_thin_support
           @performed_render = true
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
             @performed_render = false
@@ -137,24 +136,12 @@ module TemplateStreaming
       end
     end
 
-    def check_thin_support
-      return if defined?(@thin_support_found)
-      if (@thin_callback = request.env['async.callback'])
-        begin
-          require 'event_machine_flush'
-          @thin_support_found = true
-        rescue LoadError
-          raise "Template Streaming on Thin requires the event_machine_flush gem."
-        end
-      end
-    end
-
     #
     # Force EventMachine to flush its buffer when using Thin.
     #
     def flush_thin
-      @thin_callback and
-        EventMachineFlush.flush(@thin_callback.receiver)
+      connection = request.env['template_streaming.thin_connection'] and
+        EventMachineFlush.flush(connection)
     end
   end
 
@@ -264,4 +251,35 @@ module TemplateStreaming
   ActionController::Base.send :include, Controller
   ActionController::Response.send :include, Response
   ActionController::Dispatcher.middleware.insert 0, Rack::Chunked
+end
+
+# Please let there be a better way to do this...
+#
+# We need to force Thin (EventMachine, really) to flush its output
+# buffer before ending the current EventMachine tick. We can't use
+# EventMachine.defer or .next_tick, as that would require returning
+# from the call to the response body's #each. I'm not convinced Thin
+# could even be rearchitected to support this without resorting to
+# Threads, Continuations, or Fibers.
+#
+# Here, we hack Thin to add a handle to the connection object to the
+# request environment, which we pass to EventMachineFlush, a horrid
+# C++ hack. In ruby 1.8.7 we could use env[async.callback].receiver,
+# but we want to support 1.8.6 for now too.
+if defined?(Thin)
+  begin
+    require 'event_machine_flush'
+  rescue LoadError
+    raise "Template Streaming on Thin requires the event_machine_flush gem."
+  end
+
+  Rails.configuration.after_initialize do
+    Thin::Connection.class_eval do
+      def pre_process_with_template_streaming(*args, &block)
+        @request.env['template_streaming.thin_connection'] = self
+        pre_process_without_template_streaming(*args, &block)
+      end
+      alias_method_chain :pre_process, :template_streaming
+    end
+  end
 end
