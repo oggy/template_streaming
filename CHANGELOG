@@ -1,3 +1,7 @@
+== LATEST
+
+ * Add support for Thin on Ruby 1.8.6.
+
 == 0.0.8 2010-04-28
 
  * Ensure Rack::Chunked is at the base of the middleware stack.
