@@ -232,7 +232,7 @@ module TemplateStreaming
 
     def push(data)
       if @bytes_to_threshold > 0
-        @push.call(data + padding)
+        @push.call(data + padding(@bytes_to_threshold - data.length))
         @bytes_to_threshold = 0
       else
         @push.call(data)
@@ -241,9 +241,10 @@ module TemplateStreaming
 
     private  # -------------------------------------------------------
 
-    def padding
-      content_length = [@bytes_to_threshold - 7, 0].max
-      "<!--#{'-'*content_length}-->"
+    def padding(length)
+      return '' if length <= 0
+      content_length = [length - 7, 0].max
+      "<!--#{'+'*content_length}-->"
     end
   end
 
