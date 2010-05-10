@@ -1,5 +1,5 @@
 module TemplateStreaming
-  VERSION = [0, 0, 10]
+  VERSION = [0, 0, 11]
 
   class << VERSION
     include Comparable
