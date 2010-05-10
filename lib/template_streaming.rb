@@ -6,10 +6,36 @@ module TemplateStreaming
       end
     end
 
+    #
+    # If true, always reference the flash before returning from the
+    # action when rendering progressively.
+    #
+    # This is required for the flash to work with progressive
+    # rendering, but unlike standard Rails behavior, will cause the
+    # flash to be swept even if it's never referenced in the
+    # views. This usually isn't an issue, as flash messages are
+    # typically rendered in the layout, causing a reference anyway.
+    #
+    # Default: true.
+    #
     attr_accessor :autosweep_flash
+
+    #
+    # If true, always set the authenticity token before returning from
+    # the action when rendering progressively.
+    #
+    # This is required for the authenticity token to work with
+    # progressive rendering, but unlike standard Rails behavior, will
+    # cause the token to be set (and thus the session updated) even if
+    # it's never referenced in views.
+    #
+    # Default: true.
+    #
+    attr_accessor :set_authenticity_token
   end
 
   self.autosweep_flash = true
+  self.set_authenticity_token = true
 
   module Controller
     def self.included(base)
@@ -37,6 +63,7 @@ module TemplateStreaming
           response.body = @streaming_body
           response.prepare!
           flash if TemplateStreaming.autosweep_flash
+          form_authenticity_token if TemplateStreaming.set_authenticity_token
           run_callbacks :when_streaming_template
 
           # Normally, @_flash is removed after #perform_action, which
