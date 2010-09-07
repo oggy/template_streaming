@@ -1,6 +1,6 @@
 # Template Streaming
 
-Rails plugin which enables progressive rendering for templates.
+Progressive rendering for Rails.
 
 ## Background
 
@@ -8,9 +8,9 @@ A typical Rails client-side profile looks something like this:
 
 ![Typical Rails Profile][slow-profile]
 
-In almost all cases, this is highly suboptimal, as many resources, such as
-external stylesheets, are static and could be loaded by the client while it's
-waiting for the server response.
+This is highly suboptimal. Many resources, such as external stylesheets, are
+static and could be loaded by the client while it's waiting for the server
+response.
 
 The trick is to output the response *progressively*--flushing the stylesheet
 link tags out to the client before it has rendered the rest of the
@@ -18,10 +18,10 @@ page. Depending on how other external resources such javascripts and images are
 used, they too may be flushed out early, significantly reducing the time for the
 page to become interactive.
 
-The problem is Rails has never been geared to allow this. Most Rails
-applications use layouts, which require rendering the content of the page before
-the layout. Since the global stylesheet tag is usually in the layout, we can't
-simply flush the rendering buffer from a helper method.
+The problem is Rails has never been geared to allow this, as layouts
+render the content of the page before the layout. Since the global
+stylesheet tag is usually in the layout, we can't simply flush the
+rendering buffer from a helper method.
 
 Until now.
 
