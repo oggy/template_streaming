@@ -60,22 +60,24 @@
 #
 #  * Add support for New Relic developer mode profiling.
 #
+
+# Load parts of the agent we need to hack.
+def self.expand_load_path_entry(path)
+  $:.each do |dir|
+    absolute_path = File.join(dir, path)
+    return absolute_path if File.exist?(absolute_path)
+  end
+  nil
+end
+require 'new_relic/agent'
+# New Relic requires this thing multiple times under different names...
+require 'new_relic/agent/instrumentation/metric_frame'
+require expand_load_path_entry('new_relic/agent/instrumentation/metric_frame.rb')
+require 'new_relic/agent/instrumentation/controller_instrumentation'
+
 module TemplateStreaming
   module NewRelic
     Error = Class.new(RuntimeError)
-
-    # Load parts of the agent we need to hack.
-    def self.expand_load_path_entry(path)
-      $:.each do |dir|
-        absolute_path = File.join(dir, path)
-        return absolute_path if File.exist?(absolute_path)
-      end
-      nil
-    end
-    require 'new_relic/agent'
-    # New Relic requires this thing multiple times under different names...
-    require 'new_relic/agent/instrumentation/metric_frame'
-    require expand_load_path_entry('new_relic/agent/instrumentation/metric_frame.rb')
 
     # Rack environment keys.
     ENV_FRAME_DATA = 'template_streaming.new_relic.frame_data'
@@ -335,6 +337,19 @@ module TemplateStreaming
       end
     end
 
+    module ControllerInstrumentationShim
+      def self.included(base)
+        # This shim method takes the wrong number of args. Fix it.
+        base.module_eval 'def newrelic_metric_path(*args); end', __FILE__, __LINE__ + 1
+      end
+
+      # This is private in the real ControllerInstrumentation module,
+      # but we need it.
+      def _is_filtered?(key)
+        true
+      end
+    end
+
     module Histogram
       def self.included(base)
         base.alias_method_chain :process, :template_streaming
@@ -530,6 +545,7 @@ module TemplateStreaming
     ActionController::Base.send :include, Controller
     ::NewRelic::Agent::StatsEngine.send :include, StatsEngine
     ::NewRelic::Agent::Instrumentation::MetricFrame.send :include, MetricFrame
+    ::NewRelic::Agent::Instrumentation::ControllerInstrumentation::Shim.send :include, ControllerInstrumentationShim
     ::NewRelic::Histogram.send :include, Histogram
     ::NewRelic::Agent::Agent.send :include, Agent
     ::NewRelic::Agent::TransactionSampler.send :include, TransactionSampler
