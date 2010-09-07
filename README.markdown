@@ -25,11 +25,10 @@ simply flush the rendering buffer from a helper method.
 
 Until now.
 
-Template Streaming circumvents the template rendering order by introducing
-*prelayouts*. A prelayout wraps a layout, and is rendered *before* the layout
-and its content. By using the provided `flush` helper prior to yielding in the
-prelayout, one can now output content early in the rendering process, giving
-profiles that look more like:
+With Template Streaming, simply add `:progressive => true` to your
+`layout` call to invert the rendering order, and then call `flush` in
+your templates whenever you wish to flush the output buffer to the
+client. This gives profiles that look more like:
 
 ![Progressive Rendering Profile][fast-profile]
 
@@ -73,6 +72,7 @@ web servers!
 
 ### Controller
 
+ * `layout 'name', :progressive => true` - render the layout before content.
  * `when_streaming_template` - defines a callback to be called during a `render`
    call when a template is streamed. This is *before* the body is rendered, or
    any data is sent to the client.
@@ -83,7 +83,7 @@ Conventional wisdom says to put your external stylesheets in the HEAD of your
 page, and your external javascripts at the bottom of the BODY (markup in
 [HAML][haml]):
 
-### `app/views/prelayouts/application.html.haml`
+### `app/views/layouts/application.html.haml`
 
     !!! 5
     %html
@@ -91,14 +91,10 @@ page, and your external javascripts at the bottom of the BODY (markup in
         = stylesheet_link_tag 'one'
         = stylesheet_link_tag 'two'
      - flush
-     = yield
-
-### `app/views/layouts/application.html.haml`
-
-    %body
-      = yield
-      = javascript_include_tag 'one'
-      = javascript_include_tag 'two'
+     %body
+       = yield
+       = javascript_include_tag 'one'
+       = javascript_include_tag 'two'
 
 With progressive rendering, however, this could be improved. As [Stoyan Stefanov
 writes][stefanov], you can put your javascripts in the HEAD of your page if you
@@ -112,7 +108,22 @@ piece of inline javascript. This is done by `define_get_script`
 below. `get_script` then includes a call to this function which fetches the
 script asynchronously, and then appends the script tag to the HEAD.
 
-### `app/views/prelayouts/application.html.haml`
+### `config/routes.rb`
+
+    ActionController::Routing::Routes.draw do |map|
+      map.root :controller => 'test', :action => 'test'
+    end
+
+### `app/controllers/test_controller.rb`
+
+    class TestController < ApplicationController
+      layout 'application', :progressive => true
+
+      def test
+      end
+    end
+
+### `app/views/layouts/application.html.haml`
 
     !!! 5
     %html
@@ -122,13 +133,13 @@ script asynchronously, and then appends the script tag to the HEAD.
         = stylesheet_link_tag 'two'
         = get_script 'one'
         = get_script 'two'
-     - flush
-     = yield
+     %body
+        - flush
+        = yield
 
-### `app/views/layouts/application.html.haml`
+### `app/views/test/test.html.haml`
 
-    %body
-      = yield
+    ...content...
 
 ### `app/helpers/application_helper.rb`
 

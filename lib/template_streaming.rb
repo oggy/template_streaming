@@ -40,12 +40,31 @@ module TemplateStreaming
   module Controller
     def self.included(base)
       base.class_eval do
+        extend ClassMethods
         alias_method_chain :render, :template_streaming
         alias_method_chain :render_to_string, :template_streaming
         helper_method :flush, :push
 
         include ActiveSupport::Callbacks
         define_callbacks :when_streaming_template
+      end
+    end
+
+    module ClassMethods
+      def self.extended(base)
+        class << base
+          alias_method_chain :layout, :template_streaming
+        end
+      end
+
+      def layout_with_template_streaming(template_name, options={}, *rest)
+        options.key?(:progressive) and
+          write_inheritable_attribute(:render_progressively, !!options.delete(:progressive))
+        layout_without_template_streaming(template_name, options={}, *rest)
+      end
+
+      def render_progressively?
+        read_inheritable_attribute(:render_progressively)
       end
     end
 
@@ -98,7 +117,7 @@ module TemplateStreaming
     # immediately.
     #
     def flush
-      unless @template.output_buffer.nil?
+      if @streaming_body && !@template.output_buffer.nil?
         push @template.output_buffer.slice!(0..-1)
       end
     end
@@ -107,8 +126,10 @@ module TemplateStreaming
     # Push the given data to the client immediately.
     #
     def push(data)
-      @streaming_body.push(data)
-      flush_thin
+      if @streaming_body
+        @streaming_body.push(data)
+        flush_thin
+      end
     end
 
     def template_streaming_flash # :nodoc:
@@ -129,10 +150,16 @@ module TemplateStreaming
         @render_stack_height == 1 or
           return yield(false)
 
-        if (options = args.last).is_a?(Hash)
+        (options = args.last).is_a?(Hash) or
+          options = {}
+
+        self.class.render_progressively? or
+          return yield(false)
+
+        if options
           yield((UNSTREAMABLE_KEYS & options.keys).empty?)
         else
-          yield(args.first != :update)
+          yield args.first != :update
         end
       ensure
         @render_stack_height -= 1
@@ -201,43 +228,23 @@ module TemplateStreaming
     end
 
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
-      with_prelayout prelayout_for(options), local_assigns do
+      if block_given?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
-      end
-    end
-
-    def with_prelayout(prelayout, locals, &block)
-      if prelayout
-        begin
-          @_proc_for_layout = lambda do
-            # nil out @_proc_for_layout else rendering with the layout will call it again.
-            @_proc_for_layout, original_proc_for_layout = nil, @_proc_for_layout
-            begin
-              block.call
-            ensure
-              @_proc_for_layout = original_proc_for_layout
-            end
-          end
-          render(:file => prelayout, :locals => locals)
-        ensure
-          @_proc_for_layout = nil
-        end
       else
-        yield
+        if controller.class.render_progressively?
+          layout = options.delete(:layout)
+          original_proc_for_layout = @_proc_for_layout
+          begin
+            # TODO: what is @cached_content_for_layout in base.rb ?
+            @_proc_for_layout = lambda{render(options)}
+            render(options.merge(:file => layout.path_without_format_and_extension))
+          ensure
+            @_proc_for_layout = original_proc_for_layout
+          end
+        else
+          _render_with_layout_without_template_streaming(options, local_assigns, &block)
+        end
       end
-    end
-
-    def prelayout_for(options)
-      layout = options[:layout] or
-        return nil
-      # Views can call #render with :layout to render a layout
-      # *partial* which we don't want to interfere with. Only the
-      # interlal toplevel #render calls :layout with an
-      # ActionView::Template
-      layout.is_a?(ActionView::Template) or
-        return nil
-      view_paths.find_template('pre' + layout.path_without_format_and_extension, layout.format)
-    rescue ActionView::MissingTemplate
     end
 
     def flash_with_template_streaming # :nodoc:
