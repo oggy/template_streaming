@@ -231,7 +231,13 @@ module TemplateStreaming
       if block_given?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
       else
-        if controller.class.render_progressively?
+        render_progressively =
+          if options[:progressive].nil?
+            controller.class.render_progressively?
+          else
+            options[:progressive]
+          end
+        if render_progressively
           layout = options.delete(:layout)
           original_proc_for_layout = @_proc_for_layout
           begin

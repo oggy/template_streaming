@@ -1,7 +1,8 @@
 == LATEST
 
  * Replace prelayouts with :progressive => true option to #layout.
- * Support use as a plugin.
+ * Add render :progressive => true option for nested layouts.
+ * Add initializer (fixes use as a plugin).
  * New Relic support.
 
 == 0.0.11 2010-05-10
