@@ -116,7 +116,7 @@ module TemplateStreaming
       def in_controller_scope
         controller_frame_data = @env[ENV_FRAME_DATA] or
           # Didn't hit the action, or do_not_trace was set.
-          return nil
+          return yield
 
         #return perform_action_with_newrelic_profile(args, &block) if NewRelic::Control.instance.profiling?
 
