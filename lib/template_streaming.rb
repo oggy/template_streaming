@@ -230,26 +230,38 @@ module TemplateStreaming
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
       if block_given?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
-      else
-        render_progressively =
-          if options[:progressive].nil?
-            controller.class.render_progressively?
-          else
-            options[:progressive]
-          end
-        if render_progressively
-          layout = options.delete(:layout)
-          original_proc_for_layout = @_proc_for_layout
-          begin
-            # TODO: what is @cached_content_for_layout in base.rb ?
-            @_proc_for_layout = lambda{render(options)}
-            render(options.merge(:file => layout.path_without_format_and_extension))
-          ensure
-            @_proc_for_layout = original_proc_for_layout
-          end
-        else
-          _render_with_layout_without_template_streaming(options, local_assigns, &block)
+      elsif options[:layout].is_a?(ActionView::Template) && controller.class.render_progressively?
+        # Toplevel render call, from the controller.
+        layout = options.delete(:layout)
+        with_proc_for_layout( lambda{render(options)} ) do
+          render(options.merge(:file => layout.path_without_format_and_extension))
         end
+      elsif options[:progressive]
+        layout = options.delete(:layout)
+        with_proc_for_layout( lambda{render(options)} ) do |*args|
+          if args.empty?
+            if (options[:inline] || options[:file] || options[:text])
+              render(:file => layout, :locals => local_assigns)
+            else
+              render(options.merge(:partial => layout))
+            end
+          else
+            instance_variable_get(:"@content_for_#{args.first}")
+          end
+        end
+      else
+        _render_with_layout_without_template_streaming(options, local_assigns, &block)
+      end
+    end
+
+    def with_proc_for_layout(proc)
+      original_proc_for_layout = @_proc_for_layout
+      @_proc_for_layout = proc
+      begin
+        # TODO: what is @cached_content_for_layout in base.rb ?
+        yield
+      ensure
+        @_proc_for_layout = original_proc_for_layout
       end
     end
 
