@@ -57,15 +57,17 @@ This has several implications:
     client immediately.
  * `push(data)` - send the given data to the client immediately.
 
-These can only do their job if the underlying web server supports progressive
-rendering via Rack. This has been tested successfully with [Mongrel][mongrel]
-and [Passenger][passenger]. [Thin][thin] is only supported if the [Event Machine
-Flush][event-machine-flush] gem is installed. WEBrick does not support
-progressive rendering. [Please send me][contact] reports of success with other
-web servers!
+These can only do their job if the underlying web server supports
+progressive rendering via Rack. This has been tested successfully with
+[Passenger][passenger], [Unicorn][unicorn], and
+[Mongrel][mongrel]. [Thin][thin] is only supported if the [Event
+Machine Flush][event-machine-flush] gem is installed. WEBrick does not
+support progressive rendering. [Please send me][contact] reports of
+success with other web servers!
 
-[mongrel]: http://github.com/fauna/mongrel
 [passenger]: http://www.modrails.com
+[unicorn]: http://unicorn.bogomips.org/
+[mongrel]: http://github.com/fauna/mongrel
 [thin]: http://github.com/macournoyer/thin
 [event-machine-flush]: http://github.com/oggy/event_machine_flush
 [contact]: mailto:george.ogata@gmail.com
