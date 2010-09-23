@@ -233,20 +233,16 @@ module TemplateStreaming
       elsif options[:layout].is_a?(ActionView::Template) && controller.class.render_progressively?
         # Toplevel render call, from the controller.
         layout = options.delete(:layout)
-        with_proc_for_layout( lambda{render(options)} ) do
+        with_render_proc_for_layout(options) do
           render(options.merge(:file => layout.path_without_format_and_extension))
         end
       elsif options[:progressive]
         layout = options.delete(:layout)
-        with_proc_for_layout( lambda{render(options)} ) do |*args|
-          if args.empty?
-            if (options[:inline] || options[:file] || options[:text])
-              render(:file => layout, :locals => local_assigns)
-            else
-              render(options.merge(:partial => layout))
-            end
+        with_render_proc_for_layout(options) do
+          if (options[:inline] || options[:file] || options[:text])
+            render(:file => layout, :locals => local_assigns)
           else
-            instance_variable_get(:"@content_for_#{args.first}")
+            render(options.merge(:partial => layout))
           end
         end
       else
@@ -254,9 +250,15 @@ module TemplateStreaming
       end
     end
 
-    def with_proc_for_layout(proc)
+    def with_render_proc_for_layout(options)
       original_proc_for_layout = @_proc_for_layout
-      @_proc_for_layout = proc
+      @_proc_for_layout = lambda do |*args|
+        if args.empty?
+          render(options)
+        else
+          instance_variable_get(:"@content_for_#{args.first}")
+        end
+      end
       begin
         # TODO: what is @cached_content_for_layout in base.rb ?
         yield
