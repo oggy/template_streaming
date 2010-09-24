@@ -246,7 +246,17 @@ module TemplateStreaming
           end
         end
       else
-        _render_with_layout_without_template_streaming(options, local_assigns, &block)
+        # We may have set @_proc_for_layout in an outer render, but
+        # render(:layout => , :partial =>) uses @content_for_layout, and
+        # @_proc_for_layout overrides @content_for_layout. Thus, we need to
+        # clear @_proc_for_layout for the duration of this render.
+        original_proc_for_layout = @_proc_for_layout
+        @_proc_for_layout = nil
+        begin
+          _render_with_layout_without_template_streaming(options, local_assigns, &block)
+        ensure
+          @_proc_for_layout = original_proc_for_layout
+        end
       end
     end
 
