@@ -32,8 +32,8 @@ client. This gives profiles that look more like:
 
 ![Progressive Rendering Profile][fast-profile]
 
-[slow-profile]: http://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png
-[fast-profile]: http://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png
+[slow-profile]: https://github.com/oggy/template_streaming/raw/master/doc/slow-profile.png
+[fast-profile]: https://github.com/oggy/template_streaming/raw/master/doc/fast-profile.png
 
 ## API
 
@@ -67,9 +67,9 @@ success with other web servers!
 
 [passenger]: http://www.modrails.com
 [unicorn]: http://unicorn.bogomips.org/
-[mongrel]: http://github.com/fauna/mongrel
-[thin]: http://github.com/macournoyer/thin
-[event-machine-flush]: http://github.com/oggy/event_machine_flush
+[mongrel]: https://github.com/fauna/mongrel
+[thin]: https://github.com/macournoyer/thin
+[event-machine-flush]: https://github.com/oggy/event_machine_flush
 [contact]: mailto:george.ogata@gmail.com
 
 ### Controller
@@ -162,7 +162,7 @@ script asynchronously, and then appends the script tag to the HEAD.
 ### `public/javascripts/get_script.js`
 
     //
-    // Written by Sam Cole. See http://gist.github.com/364746 for more info.
+    // Written by Sam Cole. See https://gist.github.com/364746 for more info.
     //
     window.$ = {
       getScript: function(script_src, callback) {
@@ -192,12 +192,12 @@ The second profile was created using this code.
 
 [haml]: http://haml-lang.com
 [stefanov]: http://www.yuiblog.com/blog/2008/07/22/non-blocking-scripts
-[get-script]: http://gist.github.com/364746
+[get-script]: https://gist.github.com/364746
 
 ## Note on Patches/Pull Requests
 
- * Bug reports: http://github.com/oggy/template_streaming/issues
- * Source: http://github.com/oggy/template_streaming
+ * Bug reports: https://github.com/oggy/template_streaming/issues
+ * Source: https://github.com/oggy/template_streaming
  * Patches: Fork on Github, send pull request.
    * Ensure patch includes tests.
    * Leave the version alone, or bump it in a separate commit.
