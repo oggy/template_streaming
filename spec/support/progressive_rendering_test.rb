@@ -9,7 +9,7 @@ module ProgressiveRenderingTest
   def setup_progressive_rendering_test
     ActionController::Base.session = {:key => "_", :secret => "x"*30}
     ActionController::Routing::Routes.clear!
-    ActionController::Routing::Routes.add_route('/', :controller => 'test')
+    ActionController::Routing::Routes.add_route('/', :controller => 'test', :action => 'action')
 
     push_constant_value Object, :TestController, Class.new(Controller)
     TestController.view_paths = [VIEW_PATH]
@@ -31,11 +31,27 @@ module ProgressiveRenderingTest
   end
 
   def view(text)
-    write_file("#{controller.view_paths.first}/test/index.html.erb", text)
+    template("test/action", text)
   end
 
   def layout(text)
-    write_file("#{controller.view_paths.first}/layouts/test.html.erb", text)
+    template("layouts/layout", text)
+  end
+
+  def partial(text)
+    template("test/_partial", text)
+  end
+
+  def template(template_path, text)
+    path = "#{controller.view_paths.first}/#{template_path}.html.erb"
+    FileUtils.mkdir_p File.dirname(path)
+    open(path, 'w') { |f| f.print text }
+  end
+
+  def action(&block)
+    TestController.class_eval do
+      define_method(:action, &block)
+    end
   end
 
   def run(env_overrides={})
@@ -49,11 +65,6 @@ module ProgressiveRenderingTest
   end
 
   attr_reader :status, :headers, :body, :data
-
-  def write_file(path, content)
-    FileUtils.mkdir_p File.dirname(path)
-    open(path, 'w') { |f| f.print content }
-  end
 
   def default_env
     {
@@ -75,7 +86,7 @@ module ProgressiveRenderingTest
   end
 
   class Controller < ActionController::Base
-    def index
+    def action
     end
 
     def rescue_action(exception)
@@ -106,5 +117,6 @@ module ProgressiveRenderingTest
   end
 
   include Helpers
+  Controller.send :include, Helpers
   ActionView::Base.send :include, Helpers
 end
