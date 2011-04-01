@@ -351,6 +351,11 @@ describe TemplateStreaming do
       end
 
       it "should render a given :text string unprogressively" do
+          action do
+            render :text => 'ab'
+          end
+          run
+          received.should == 'ab'
       end
     end
   end
