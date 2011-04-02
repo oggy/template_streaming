@@ -6,7 +6,9 @@ describe TemplateStreaming do
   describe "#flush" do
     describe "when rendering progressively" do
       before do
-        TestController.layout 'layout', :progressive => true
+        action do
+          render :progressive => true, :layout => 'layout'
+        end
       end
 
       it "should flush the rendered content immediately" do
@@ -39,7 +41,9 @@ describe TemplateStreaming do
 
     describe "when not rendering progressively" do
       before do
-        TestController.layout 'layout'
+        action do
+          render :progressive => false, :layout => 'layout'
+        end
       end
 
       it "should do nothing" do
@@ -67,7 +71,9 @@ describe TemplateStreaming do
   describe "#push" do
     describe "when rendering progressively" do
       before do
-        TestController.layout 'layout', :progressive => true
+        action do
+          render :progressive => true, :layout => 'layout'
+        end
       end
 
       it "should send the given data to the client immediately" do
@@ -85,7 +91,9 @@ describe TemplateStreaming do
 
     describe "when not rendering progressively" do
       before do
-        TestController.layout 'layout'
+        action do
+          render :progressive => false, :layout => 'layout'
+        end
       end
 
       it "should do nothing" do
@@ -104,18 +112,18 @@ describe TemplateStreaming do
   describe "response headers" do
     describe "when rendering progressively" do
       before do
-        TestController.layout 'layout', :progressive => true
+        action do
+          render :progressive => true, :layout => nil
+        end
       end
 
       it "should not set a content length" do
-        layout ''
         view ''
         run
         headers.key?('Content-Length').should be_false
       end
 
       it "should specify chunked transfer encoding" do
-        layout ''
         view ''
         run
         headers['Transfer-Encoding'].should == 'chunked'
@@ -124,21 +132,21 @@ describe TemplateStreaming do
 
     describe "when not rendering progressively" do
       before do
-        TestController.layout 'layout'
+        action do
+          render :progressive => false, :layout => nil
+        end
       end
 
       it "should not specify a transfer encoding" do
-        layout 'x'
         view ''
         run
         headers.key?('Transfer-Encoding').should be_false
       end
 
       it "should set a content length" do
-        layout 'x'
         view ''
         run
-        headers['Content-Length'].should == '1'
+        headers['Content-Length'].should == '0'
       end
     end
   end
@@ -146,35 +154,39 @@ describe TemplateStreaming do
   describe "#render in the controller" do
     describe "when rendering progressively" do
       before do
+        @render_options = {:progressive => true}
         view "(<% flush %><%= render :partial => 'partial' %>)"
         partial "a<% flush %>b"
       end
 
       describe "with a layout" do
         before do
-          TestController.layout 'layout', :progressive => true
+          @render_options[:layout] = 'layout'
           layout "[<% flush %><%= yield %>]"
         end
 
         it "should render templates specified with :action progressively" do
+          render_options = @render_options
           action do
-            render :action => 'action', :layout => 'layout'
+            render render_options.merge(:action => 'action')
           end
           run
           received.should == chunks('[', '(', 'a', 'b)]', :end => true)
         end
 
         it "should render templates specified with :partial progressively" do
+          render_options = @render_options
           action do
-            render :partial => 'partial', :layout => 'layout'
+            render render_options.merge(:partial => 'partial')
           end
           run
           received.should == chunks('[', 'a', 'b]', :end => true)
         end
 
         it "should render :inline templates progressively" do
+          render_options = @render_options
           action do
-            render :inline => "a<% flush %>b", :layout => 'layout'
+            render render_options.merge(:inline => "a<% flush %>b")
           end
           run
           received.should == chunks('[', 'a', 'b]', :end => true)
@@ -183,28 +195,31 @@ describe TemplateStreaming do
 
       describe "without a layout" do
         before do
-          TestController.layout nil, :progressive => true
+          @render_options[:layout] = nil
         end
 
         it "should render templates specified with :action progressively" do
+          render_options = @render_options
           action do
-            render :action => 'action'
+            render render_options.merge(:action => 'action')
           end
           run
           received.should == chunks('(', 'a', 'b)', :end => true)
         end
 
         it "should render templates specified with :partial progressively" do
+          render_options = @render_options
           action do
-            render :partial => 'partial'
+            render render_options.merge(:partial => 'partial')
           end
           run
           received.should == chunks('a', 'b', :end => true)
         end
 
         it "should render :inline templates progressively" do
+          render_options = @render_options
           action do
-            render :inline => "a<% flush %>b"
+            render render_options.merge(:inline => "a<% flush %>b")
           end
           run
           received.should == chunks('a', 'b', :end => true)
@@ -213,8 +228,9 @@ describe TemplateStreaming do
 
       it "should not affect the :text option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :text => 'test'
+          render render_options.merge(:text => 'test')
         end
         run
         headers['Content-Type'].should == 'text/html; charset=utf-8'
@@ -223,8 +239,9 @@ describe TemplateStreaming do
 
       it "should not affect the :xml option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :xml => {:key => 'value'}
+          render render_options.merge(:xml => {:key => 'value'})
         end
         run
         headers['Content-Type'].should == 'application/xml; charset=utf-8'
@@ -233,8 +250,9 @@ describe TemplateStreaming do
 
       it "should not affect the :js option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :js => "alert('hi')"
+          render render_options.merge(:js => "alert('hi')")
         end
         run
         headers['Content-Type'].should == 'text/javascript; charset=utf-8'
@@ -243,8 +261,9 @@ describe TemplateStreaming do
 
       it "should not affect the :json option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :json => {:key => 'value'}
+          render render_options.merge(:json => {:key => 'value'})
         end
         run
         headers['Content-Type'].should == 'application/json; charset=utf-8'
@@ -253,8 +272,9 @@ describe TemplateStreaming do
 
       it "should not affect the :update option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :update do |page|
+          render :update, render_options do |page|
             page << "alert('hi')"
           end
         end
@@ -265,8 +285,9 @@ describe TemplateStreaming do
 
       it "should not affect the :nothing option" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :nothing => true
+          render render_options.merge(:nothing => true)
         end
         run
         headers['Content-Type'].should == 'text/html; charset=utf-8'
@@ -275,8 +296,9 @@ describe TemplateStreaming do
 
       it "should set the given response status" do
         layout "[<%= yield %>]"
+        render_options = @render_options
         action do
-          render :nothing => true, :status => 418
+          render render_options.merge(:nothing => true, :status => 418)
         end
         run
         status.should == 418
@@ -285,35 +307,39 @@ describe TemplateStreaming do
 
     describe "when not rendering progressively" do
       before do
+        @render_options = {:progressive => false}
         view "(<%= render :partial => 'partial' %>)"
         partial "ab"
       end
 
       describe "with a layout" do
         before do
-          TestController.layout 'layout', :progressive => false
+          @render_options[:layout] = 'layout'
           layout "[<%= yield %>]"
         end
 
         it "should render templates specified with :action unprogressively" do
+          render_options = @render_options
           action do
-            render :action => 'action', :layout => 'layout'
+            render render_options.merge(:action => 'action')
           end
           run
           received.should == '[(ab)]'
         end
 
         it "should render templates specified with :partial unprogressively" do
+          render_options = @render_options
           action do
-            render :partial => 'partial', :layout => 'layout'
+            render render_options.merge(:partial => 'partial')
           end
           run
           received.should == '[ab]'
         end
 
         it "should render :inline templates unprogressively" do
+          render_options = @render_options
           action do
-            render :inline => 'ab', :layout => 'layout'
+            render render_options.merge(:inline => 'ab')
           end
           run
           received.should == '[ab]'
@@ -322,28 +348,31 @@ describe TemplateStreaming do
 
       describe "without a layout" do
         before do
-          TestController.layout nil, :progressive => false
+          @render_options[:layout] = nil
         end
 
         it "should render templates specified with :action unprogressively" do
+          render_options = @render_options
           action do
-            render :action => 'action'
+            render render_options.merge(:action => 'action')
           end
           run
           received.should == '(ab)'
         end
 
         it "should render templates specified with :partial unprogressively" do
+          render_options = @render_options
           action do
-            render :partial => 'partial'
+            render render_options.merge(:partial => 'partial')
           end
           run
           received.should == 'ab'
         end
 
         it "should render :inline templates unprogressively" do
+          render_options = @render_options
           action do
-            render :inline => 'ab'
+            render render_options.merge(:inline => 'ab')
           end
           run
           received.should == 'ab'
@@ -351,11 +380,12 @@ describe TemplateStreaming do
       end
 
       it "should render a given :text string unprogressively" do
-          action do
-            render :text => 'ab'
-          end
-          run
-          received.should == 'ab'
+        render_options = @render_options
+        action do
+          render render_options.merge(:text => 'ab')
+        end
+        run
+        received.should == 'ab'
       end
     end
   end
@@ -363,7 +393,9 @@ describe TemplateStreaming do
   describe "#render in the view" do
     describe "when rendering progressively" do
       before do
-        TestController.layout 'layout', :progressive => true
+        action do
+          render :progressive => true, :layout => 'layout'
+        end
         layout "[<% flush %><%= yield %>]"
         template 'test/_partial_layout', "{<% flush %><%= yield %>}"
       end
@@ -385,7 +417,9 @@ describe TemplateStreaming do
 
     describe "when not rendering progressively" do
       before do
-        TestController.layout 'layout'
+        action do
+          render :progressive => false, :layout => 'layout'
+        end
         layout "[<%= yield %>]"
         template 'test/_partial_layout', "{<%= yield %>}"
       end
@@ -408,10 +442,11 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the controller" do
     it "should not flush anything out to the client" do
-      TestController.layout 'layout', :progressive => true
+      #TestController.render_progressively
       action do
         @string = render_to_string :partial => 'partial'
         received.should == ''
+        render :progressive => true
       end
       layout "<%= yield %>"
       view "<%= @string %>"
@@ -423,7 +458,7 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the view" do
     it "should not flush anything out to the client" do
-      TestController.layout 'layout', :progressive => true
+      #TestController.render_progressively
       TestController.helper_method :render_to_string
       layout "<%= yield %>"
       view <<-'EOS'.gsub(/^ *\|/, '')
@@ -432,6 +467,9 @@ describe TemplateStreaming do
         |<%= string -%>
       EOS
       partial "partial"
+      action do
+        render :progressive => true
+      end
       run
       received.should == chunks("partial", :end => true)
     end
@@ -439,9 +477,10 @@ describe TemplateStreaming do
 
   describe "initial chunk padding" do
     before do
-      TestController.layout 'layout', :progressive => true
-      layout "<%= yield %>"
       view "a<% flush %>"
+      action do
+        render :progressive => true, :layout => nil
+      end
     end
 
     it "should extend to 255 bytes for Internet Explorer" do
@@ -470,20 +509,23 @@ describe TemplateStreaming do
       TestController.when_streaming_template { |c| c.data.order << :callback }
       view "<% data.order << :rendering %>"
       layout '<%= yield %>'
-      action do
-        data.order << :action
-      end
       data.order = []
     end
 
     it "should be called when rendering progressively" do
-      TestController.layout 'layout', :progressive => true
+      action do
+        data.order << :action
+        render :progressive => true
+      end
       run
       data.order.should == [:action, :callback, :rendering]
     end
 
     it "should not be called when not rendering progressively" do
-      TestController.layout 'layout'
+      action do
+        data.order << :action
+        render :progressive => false
+      end
       run
       data.order.should == [:action, :rendering]
     end

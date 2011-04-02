@@ -1,7 +1,6 @@
 == LATEST
 
- * Replace prelayouts with :progressive => true option to #layout.
- * Add render :progressive => true option for nested layouts.
+ * Replace prelayouts with :progressive => true option to #render.
  * Inject errors during rendering to end of body.
  * New Relic support.
 

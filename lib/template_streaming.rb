@@ -40,7 +40,6 @@ module TemplateStreaming
   module Controller
     def self.included(base)
       base.class_eval do
-        extend ClassMethods
         alias_method_chain :render, :template_streaming
         alias_method_chain :render_to_string, :template_streaming
         helper_method :flush, :push
@@ -50,27 +49,11 @@ module TemplateStreaming
       end
     end
 
-    module ClassMethods
-      def self.extended(base)
-        class << base
-          alias_method_chain :layout, :template_streaming
-        end
-      end
-
-      def layout_with_template_streaming(template_name, options={}, *rest)
-        options.key?(:progressive) and
-          write_inheritable_attribute(:render_progressively, !!options.delete(:progressive))
-        layout_without_template_streaming(template_name, options={}, *rest)
-      end
-
-      def render_progressively?
-        read_inheritable_attribute(:render_progressively)
-      end
-    end
-
     def render_with_template_streaming(*args, &block)
-      with_template_streaming_condition(*args) do |condition|
-        if condition
+      push_render_stack_frame do |stack_height|
+        if start_rendering_progressively?(stack_height, *args)
+          @render_progressively = true
+          @template.render_progressively = true
           @performed_render = true
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
             @performed_render = false
@@ -105,9 +88,7 @@ module TemplateStreaming
     # Override to ensure calling render_to_string from a helper
     # doesn't trigger template streaming.
     def render_to_string_with_template_streaming(*args, &block) # :nodoc
-      # Ensure renders within a render_to_string aren't considered
-      # top-level.
-      with_template_streaming_condition do
+      push_render_stack_frame do
         render_to_string_without_template_streaming(*args, &block)
       end
     end
@@ -136,33 +117,33 @@ module TemplateStreaming
       @template_streaming_flash
     end
 
+    def render_progressively?
+      @render_progressively
+    end
+
     private # --------------------------------------------------------
 
-    #
-    # Yield true if we should intercept this render call, false
-    # otherwise.
-    #
-    def with_template_streaming_condition(*args)
+    def push_render_stack_frame
       @render_stack_height ||= 0
       @render_stack_height += 1
       begin
-        # Only install our StreamingBody in the toplevel #render call.
-        @render_stack_height == 1 or
-          return yield(false)
-
-        (options = args.last).is_a?(Hash) or
-          options = {}
-
-        self.class.render_progressively? or
-          return yield(false)
-
-        if options
-          yield((UNSTREAMABLE_KEYS & options.keys).empty?)
-        else
-          yield args.first != :update
-        end
+        yield @render_stack_height
       ensure
         @render_stack_height -= 1
+      end
+    end
+
+    def start_rendering_progressively?(render_stack_height, *render_args)
+      render_stack_height == 1 or
+        return false
+
+      (render_options = render_args.last).is_a?(Hash) or
+        render_options = {}
+
+      if !(UNSTREAMABLE_KEYS & render_options.keys).empty? || render_args.first == :update
+        false
+      else
+        render_options[:progressive]
       end
     end
 
@@ -227,16 +208,22 @@ module TemplateStreaming
       base.alias_method_chain :flash, :template_streaming
     end
 
+    attr_writer :render_progressively
+
+    def render_progressively?
+      @render_progressively
+    end
+
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
-      if block_given?
+      if !render_progressively? || block_given?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
-      elsif options[:layout].is_a?(ActionView::Template) && controller.class.render_progressively?
+      elsif options[:layout].is_a?(ActionView::Template)
         # Toplevel render call, from the controller.
         layout = options.delete(:layout)
         with_render_proc_for_layout(options) do
           render(options.merge(:file => layout.path_without_format_and_extension))
         end
-      elsif options[:progressive]
+      else
         layout = options.delete(:layout)
         with_render_proc_for_layout(options) do
           if (options[:inline] || options[:file] || options[:text])
@@ -244,18 +231,6 @@ module TemplateStreaming
           else
             render(options.merge(:partial => layout))
           end
-        end
-      else
-        # We may have set @_proc_for_layout in an outer render, but
-        # render(:layout => , :partial =>) uses @content_for_layout, and
-        # @_proc_for_layout overrides @content_for_layout. Thus, we need to
-        # clear @_proc_for_layout for the duration of this render.
-        original_proc_for_layout = @_proc_for_layout
-        @_proc_for_layout = nil
-        begin
-          _render_with_layout_without_template_streaming(options, local_assigns, &block)
-        ensure
-          @_proc_for_layout = original_proc_for_layout
         end
       end
     end
@@ -278,8 +253,12 @@ module TemplateStreaming
     end
 
     def flash_with_template_streaming # :nodoc:
-      # Override ActionView::Base#flash to prevent a double-sweep.
-      controller.instance_eval { @template_streaming_flash || flash }
+      if render_progressively?
+        # Flash has been swept - don't use the standard #flash or it'll sweep again.
+        controller.instance_eval { @template_streaming_flash }
+      else
+        flash_without_template_streaming
+      end
     end
   end
 
