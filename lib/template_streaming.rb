@@ -85,6 +85,15 @@ module TemplateStreaming
       end
     end
 
+    # Mark the case when it's a layout for a toplevel render. This is
+    # done here, as it's called after the option wrangling in
+    # AC::Base#render, and nowhere else.
+    def pick_layout(options)
+      result = super
+      options[:toplevel_render_with_layout] = true if result
+      result
+    end
+
     # Override to ensure calling render_to_string from a helper
     # doesn't trigger template streaming.
     def render_to_string_with_template_streaming(*args, &block) # :nodoc
@@ -204,9 +213,34 @@ module TemplateStreaming
 
   module View
     def self.included(base)
+      base.alias_method_chain :render, :template_streaming
       base.alias_method_chain :_render_with_layout, :template_streaming
       base.alias_method_chain :flash, :template_streaming
     end
+
+    def render_with_template_streaming(*args, &block)
+      options = args.first
+      if render_progressively? && options.is_a?(Hash)
+        # These branches exist to handle the case where AC::Base#render calls
+        # AV::Base#render for rendering a partial with a layout. AC::Base
+        # renders the partial then the layout separately, but we need to render
+        # them together, in the reverse order (layout first). We do this by
+        # standard-rendering the layout with a block that renders the partial.
+        if options[:toplevel_render_with_layout] && (partial = options[:partial])
+          # Don't render yet - we need to do the layout first.
+          options.delete(:toplevel_render_with_layout)
+          return DeferredPartialRender.new(args)
+        elsif options[:text].is_a?(DeferredPartialRender)
+          render = options.delete(:text)
+          # We patch the case of rendering :partial with :layout
+          # progressively in _render_with_layout.
+          return render(render.args.first.merge(:layout => options[:layout]))
+        end
+      end
+      render_without_template_streaming(*args, &block)
+    end
+
+    DeferredPartialRender = Struct.new(:args)
 
     attr_writer :render_progressively
 
