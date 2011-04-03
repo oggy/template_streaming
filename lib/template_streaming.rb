@@ -40,6 +40,7 @@ module TemplateStreaming
   module Controller
     def self.included(base)
       base.class_eval do
+        extend ClassMethods
         alias_method_chain :render, :template_streaming
         alias_method_chain :render_to_string, :template_streaming
         helper_method :flush, :push
@@ -49,7 +50,27 @@ module TemplateStreaming
       end
     end
 
+    module ClassMethods
+      def render_progressively(options={})
+        before_filter :action_renders_progressively, options
+      end
+    end
+
+    def action_renders_progressively
+      @action_progressively_renders = true
+    end
+
+    def action_renders_progressively?
+      @action_progressively_renders
+    end
+
     def render_with_template_streaming(*args, &block)
+      options = args.first { |a| a.is_a?(Hash) }
+      if options && options.size == 1 && options.key?(:progressive)
+        # Need to set the default values, since the standard #render won't.
+        options[:template] = default_template
+        options[:layout] = true
+      end
       push_render_stack_frame do |stack_height|
         if start_rendering_progressively?(stack_height, *args)
           @render_progressively = true
@@ -152,7 +173,12 @@ module TemplateStreaming
       if !(UNSTREAMABLE_KEYS & render_options.keys).empty? || render_args.first == :update
         false
       else
-        render_options[:progressive]
+        explicit_option = render_options[:progressive]
+        if explicit_option.nil?
+          action_renders_progressively?
+        else
+          explicit_option
+        end
       end
     end
 

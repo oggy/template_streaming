@@ -151,6 +151,50 @@ describe TemplateStreaming do
     end
   end
 
+  describe ".render_progressively" do
+    before do
+      TestController.layout 'layout'
+      layout "[<% flush %><%= yield %>]"
+      view "a"
+    end
+
+    it "should render all actions progressively if no options are given" do
+      TestController.render_progressively
+      run
+      received.should == chunks('[', 'a]', :end => true)
+    end
+
+    it "should render the action progressively if it is included with :only" do
+      TestController.render_progressively :only => :action
+      run
+      received.should == chunks('[', 'a]', :end => true)
+    end
+
+    it "should not render the action progressively if it is excepted" do
+      TestController.render_progressively :except => :action
+      run
+      received.should == "[a]"
+    end
+
+    it "should be overridden to true by an explicit :progressive => true when rendering" do
+      TestController.render_progressively :except => :action
+      action do
+        render :progressive => true
+      end
+      run
+      received.should == chunks('[', 'a]', :end => true)
+    end
+
+    it "should be overridden to false by an explicit :progressive => false when rendering" do
+      TestController.render_progressively :only => :action
+      action do
+        render :progressive => false
+      end
+      run
+      received.should == "[a]"
+    end
+  end
+
   describe "#render in the controller" do
     describe "when rendering progressively" do
       before do
@@ -388,6 +432,17 @@ describe TemplateStreaming do
         received.should == 'ab'
       end
     end
+
+    it "should use the standard defaults when only a :progressive option is given" do
+      template 'layouts/controller_layout', "[<%= yield %>]"
+      TestController.layout 'controller_layout'
+      view 'a'
+      action do
+        render :progressive => false
+      end
+      run
+      received.should == '[a]'
+    end
   end
 
   describe "#render in the view" do
@@ -442,7 +497,7 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the controller" do
     it "should not flush anything out to the client" do
-      #TestController.render_progressively
+      TestController.render_progressively
       action do
         @string = render_to_string :partial => 'partial'
         received.should == ''
@@ -458,7 +513,7 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the view" do
     it "should not flush anything out to the client" do
-      #TestController.render_progressively
+      TestController.render_progressively
       TestController.helper_method :render_to_string
       layout "<%= yield %>"
       view <<-'EOS'.gsub(/^ *\|/, '')
