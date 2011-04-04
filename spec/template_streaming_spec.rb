@@ -585,4 +585,190 @@ describe TemplateStreaming do
       data.order.should == [:action, :rendering]
     end
   end
+
+  describe "#flash" do
+    describe "when rendering progressively" do
+      it "should behave correctly when referenced in the controller" do
+        values = []
+        view ""
+        action do
+          flash[:key] = "value" if params[:set]
+          values << flash[:key]
+          render :progressive => true
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        values.should == ['value', 'value', nil]
+      end
+
+      it "should behave correctly when only referenced in the view" do
+        view "(<%= flash[:key] %>)"
+        action do
+          flash[:key] = "value" if params[:set]
+          render :progressive => true
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+        received.should == chunks('(value)', :end => true)
+
+        run('HTTP_COOKIE' => session_cookie)
+        received.should == chunks('(value)', :end => true)
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        received.should == chunks('()', :end => true)
+      end
+    end
+
+    describe "when not rendering progressively" do
+      it "should behave correctly when referenced in the controller" do
+        values = []
+        view ""
+        action do
+          flash[:key] = "value" if params[:set]
+          values << flash[:key]
+          render :progressive => false
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        values.should == ['value', 'value', nil]
+      end
+    end
+
+    it "should behave correctly when only referenced in the view" do
+      view "(<%= flash[:key] %>)"
+      action do
+        flash[:key] = "value" if params[:set]
+      end
+      run('QUERY_STRING' => 'set=1')
+      session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+      received.should == '(value)'
+
+      run('HTTP_COOKIE' => session_cookie)
+      received.should == '(value)'
+      session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+      run('HTTP_COOKIE' => session_cookie)
+      received.should == '()'
+    end
+  end
+
+  describe "#flash.now" do
+    describe "when rendering progressively" do
+      it "should behave correctly when referenced in the controller" do
+        values = []
+        view ""
+        action do
+          flash.now[:key] = "value" if params[:set]
+          values << flash[:key]
+          render :progressive => true
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        values.should == ['value', nil]
+      end
+
+      it "should behave correctly when only referenced in the view" do
+        view "(<%= flash[:key] %>)"
+        action do
+          flash.now[:key] = "value" if params[:set]
+          render :progressive => true
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+        received.should == chunks('(value)', :end => true)
+
+        run('HTTP_COOKIE' => session_cookie)
+        received.should == chunks('()', :end => true)
+      end
+    end
+
+    describe "when not rendering progressively" do
+      it "should behave correctly when referenced in the controller" do
+        values = []
+        view ""
+        action do
+          flash.now[:key] = "value" if params[:set]
+          values << flash[:key]
+          render :progressive => false
+        end
+        run('QUERY_STRING' => 'set=1')
+        session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+
+        run('HTTP_COOKIE' => session_cookie)
+        values.should == ['value', nil]
+      end
+    end
+
+    it "should behave correctly when only referenced in the view" do
+      view "(<%= flash[:key] %>)"
+      action do
+        flash.now[:key] = "value" if params[:set]
+      end
+      run('QUERY_STRING' => 'set=1')
+      session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
+      received.should == '(value)'
+
+      run('HTTP_COOKIE' => session_cookie)
+      received.should == '()'
+    end
+  end
+
+  describe "#form_authenticity_token" do
+    describe "when rendering progressively" do
+      it "should match what is in the session when referenced in the controller" do
+        view ''
+        value = nil
+        action do
+          value = form_authenticity_token
+          render :progressive => true
+        end
+        run
+        session[:_csrf_token].should == value
+      end
+
+      it "should match what is in the session when only referenced in the view" do
+        view "<%= form_authenticity_token %>"
+        action do
+          render :progressive => true
+        end
+        run
+        received.should == chunks(session[:_csrf_token], :end => true)
+      end
+    end
+
+    describe "when not rendering progressively" do
+      it "should match what is in the session when referenced in the controller" do
+        view ''
+        value = nil
+        action do
+          value = form_authenticity_token
+          render :progressive => false
+        end
+        run
+        session[:_csrf_token].should == value
+      end
+
+      it "should match what is in the session when only referenced in the view" do
+        view "<%= form_authenticity_token %>"
+        action do
+          render :progressive => false
+        end
+        run
+        received.should == session[:_csrf_token]
+      end
+    end
+  end
 end

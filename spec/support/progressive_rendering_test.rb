@@ -1,5 +1,6 @@
 module ProgressiveRenderingTest
   VIEW_PATH = "#{ROOT}/spec/tmp/views"
+  COOKIE_SECRET = 'x'*30
 
   def self.included(base)
     base.before { setup_progressive_rendering_test }
@@ -7,7 +8,7 @@ module ProgressiveRenderingTest
   end
 
   def setup_progressive_rendering_test
-    ActionController::Base.session = {:key => "_", :secret => "x"*30}
+    ActionController::Base.session = {:key => "session", :secret => COOKIE_SECRET}
     ActionController::Routing::Routes.clear!
     ActionController::Routing::Routes.add_route('/', :controller => 'test', :action => 'action')
 
@@ -65,6 +66,12 @@ module ProgressiveRenderingTest
   end
 
   attr_reader :status, :headers, :body, :data
+
+  def session
+    cookie_value = headers['Set-Cookie'].scan(/^session=([^;]*)/).first.first
+    verifier = ActiveSupport::MessageVerifier.new(COOKIE_SECRET, 'SHA1')
+    verifier.verify(CGI.unescape(cookie_value))
+  end
 
   def default_env
     {

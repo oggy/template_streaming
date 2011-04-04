@@ -5,37 +5,7 @@ module TemplateStreaming
         send "#{key}=", value
       end
     end
-
-    #
-    # If true, always reference the flash before returning from the
-    # action when rendering progressively.
-    #
-    # This is required for the flash to work with progressive
-    # rendering, but unlike standard Rails behavior, will cause the
-    # flash to be swept even if it's never referenced in the
-    # views. This usually isn't an issue, as flash messages are
-    # typically rendered in the layout, causing a reference anyway.
-    #
-    # Default: true.
-    #
-    attr_accessor :autosweep_flash
-
-    #
-    # If true, always set the authenticity token before returning from
-    # the action when rendering progressively.
-    #
-    # This is required for the authenticity token to work with
-    # progressive rendering, but unlike standard Rails behavior, will
-    # cause the token to be set (and thus the session updated) even if
-    # it's never referenced in views.
-    #
-    # Default: true.
-    #
-    attr_accessor :set_authenticity_token
   end
-
-  self.autosweep_flash = true
-  self.set_authenticity_token = true
 
   module Controller
     def self.included(base)
@@ -43,6 +13,7 @@ module TemplateStreaming
         extend ClassMethods
         alias_method_chain :render, :template_streaming
         alias_method_chain :render_to_string, :template_streaming
+        alias_method_chain :flash, :template_streaming
         helper_method :flush, :push
 
         include ActiveSupport::Callbacks
@@ -85,21 +56,24 @@ module TemplateStreaming
           end
           response.body = @streaming_body
           response.prepare!
-          flash if TemplateStreaming.autosweep_flash
-          form_authenticity_token if TemplateStreaming.set_authenticity_token
-          run_callbacks :when_streaming_template
+          form_authenticity_token  # generate now
 
-          # Normally, @_flash is removed after #perform_action, which
-          # means calling #flash in the view would cause a new
-          # FlashHash to be constructed. On top of that, the flash is
-          # swept on construction, which results in sweeping the flash
-          # twice, obliterating its contents.
+          # Normally, the flash is swept on first reference. This
+          # means we need to ensure it's referenced before the session
+          # is persisted. In the case of the cookie store, that's when
+          # the headers are sent, so we force a reference now.
           #
-          # So, we preserve the flash here under a different ivar, and
-          # override the #flash helper to return it.
-          if defined?(@_flash)
-            @template_streaming_flash = @_flash
-          end
+          # But alas, that's not all. @_flash is removed after
+          # #perform_action, which means calling #flash in the view
+          # would cause the flash to be referenced again, sweeping the
+          # flash a second time. To prevent this, we preserve the
+          # flash in a separate ivar, and patch #flash to return this
+          # if we're rendering progressively.
+          #
+          flash  # ensure sweep
+          @template_streaming_flash = @_flash
+
+          run_callbacks :when_streaming_template
         else
           render_without_template_streaming(*args, &block)
         end
@@ -213,6 +187,15 @@ module TemplateStreaming
       connection = request.env['template_streaming.thin_connection'] and
         EventMachineFlush.flush(connection)
     end
+
+    def flash_with_template_streaming # :nodoc:
+      if defined?(@template_streaming_flash)
+        # Flash has been swept - don't use the standard #flash or it'll sweep again.
+        @template_streaming_flash
+      else
+        flash_without_template_streaming
+      end
+    end
   end
 
   # Only prepare once.
@@ -241,7 +224,6 @@ module TemplateStreaming
     def self.included(base)
       base.alias_method_chain :render, :template_streaming
       base.alias_method_chain :_render_with_layout, :template_streaming
-      base.alias_method_chain :flash, :template_streaming
     end
 
     def render_with_template_streaming(*args, &block)
@@ -309,15 +291,6 @@ module TemplateStreaming
         yield
       ensure
         @_proc_for_layout = original_proc_for_layout
-      end
-    end
-
-    def flash_with_template_streaming # :nodoc:
-      if render_progressively?
-        # Flash has been swept - don't use the standard #flash or it'll sweep again.
-        controller.instance_eval { @template_streaming_flash }
-      else
-        flash_without_template_streaming
       end
     end
   end
