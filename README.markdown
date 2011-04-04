@@ -74,10 +74,14 @@ success with other web servers!
 
 ### Controller
 
- * `layout 'name', :progressive => true` - render the layout before content.
- * `when_streaming_template` - defines a callback to be called during a `render`
-   call when a template is streamed. This is *before* the body is rendered, or
-   any data is sent to the client.
+Class methods:
+
+ * `render_progressively` - render this controller's actions
+   progressively. Takes `:only` or `:except` options, like `before_filter`.
+
+ * `when_streaming_template` - registers a callback to be called during `render`
+   when rendering progressively. This is before the body is rendered, or any
+   data is sent to the client.
 
 ## Example
 
