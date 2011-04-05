@@ -257,8 +257,16 @@ module TemplateStreaming
     end
 
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
-      if !render_progressively? || block_given?
+      if !render_progressively?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
+      elsif block_given?
+        # The standard method doesn't properly restore @_proc_for_layout. Do it ourselves.
+        original_proc_for_layout = @_proc_for_layout
+        begin
+          _render_with_layout_without_template_streaming(options, local_assigns, &block)
+        ensure
+          @_proc_for_layout = original_proc_for_layout
+        end
       elsif options[:layout].is_a?(ActionView::Template)
         # Toplevel render call, from the controller.
         layout = options.delete(:layout)

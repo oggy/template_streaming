@@ -771,4 +771,71 @@ describe TemplateStreaming do
       end
     end
   end
+
+  describe "rendering" do
+    def render_call(layout, partial, style)
+      if style == :block
+        "<% render :layout => '#{layout}' do %><%= render :partial => '#{partial}' %><% end %>"
+      else
+        "<%= render :layout => '#{layout}', :partial => '#{partial}' %>"
+      end
+    end
+
+    describe "a partial with a layout inside another partial with a layout" do
+      [:block, :partial].each do |outer_style|
+        [:block, :partial].each do |inner_style|
+          it "should work when the outer partial layout is specified with a #{outer_style} and the inner one with a #{inner_style}" do
+            layout "layout[<% flush %><%= yield %>]"
+            view "view[<% flush %>#{render_call 'outer_layout', 'outer', outer_style}]"
+            template 'test/_outer_layout', 'outer_layout[<% flush %><%= yield %>]'
+            template 'test/_inner_layout', 'inner_layout[<% flush %><%= yield %>]'
+            template 'test/_outer', "outer[<% flush %>#{render_call 'inner_layout', 'inner', inner_style}]"
+            template 'test/_inner', "inner"
+            action do
+              render :layout => 'layout', :progressive => true
+            end
+            run
+            received.should == chunks('layout[', 'view[', 'outer_layout[', 'outer[', 'inner_layout[', 'inner]]]]]', :end => true)
+          end
+        end
+      end
+    end
+
+    [:block, :partial].each do |style|
+      describe "a partial with a layout inside the toplevel layout" do
+        it "should render correctly when the partial layout is specified with a #{style}" do
+          layout "layout[<% flush %>#{render_call 'partial_layout', 'partial', style}<%= yield %>]"
+          view "view"
+          partial "partial"
+          template 'test/_partial_layout', 'partial_layout[<% flush %><%= yield %>]'
+          action do
+            render :layout => 'layout', :progressive => true
+          end
+          run
+          received.should == chunks('layout[', 'partial_layout[', 'partial]view]', :end => true)
+        end
+      end
+    end
+
+    [:block, :partial].each do |outer_style|
+      [:block, :partial].each do |inner_style|
+        describe "a partial with a layout inside a partial layout" do
+          it "should render correctly when the outer partial layout is specified with a #{outer_style} and the inner one with a #{inner_style}" do
+            layout "layout[<% flush %><%= yield %>]"
+            view "view[<% flush %>#{render_call 'outer_layout', 'outer', outer_style}]"
+            template 'test/_outer_layout', "outer_layout[<% flush %>#{render_call 'inner_layout', 'inner', inner_style}<%= yield %>]"
+            template 'test/_outer', 'outer'
+            template 'test/_inner_layout', "inner_layout[<% flush %><%= yield %>]"
+            template 'test/_inner', 'inner'
+            partial "partial"
+            action do
+              render :layout => 'layout', :progressive => true
+            end
+            run
+            received.should == chunks('layout[', 'view[', 'outer_layout[', 'inner_layout[', 'inner]outer]]]', :end => true)
+          end
+        end
+      end
+    end
+  end
 end
