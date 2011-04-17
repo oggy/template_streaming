@@ -14,6 +14,8 @@ module ProgressiveRenderingTest
 
     push_constant_value Object, :TestController, Class.new(Controller)
     TestController.view_paths = [VIEW_PATH]
+    @log_buffer = ''
+    TestController.logger = Logger.new(StringIO.new(@log_buffer))
 
     FileUtils.rm_rf VIEW_PATH
     FileUtils.mkdir_p VIEW_PATH

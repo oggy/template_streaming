@@ -7,6 +7,8 @@ module TemplateStreaming
     end
   end
 
+  PROGRESSIVE_KEY = 'template_streaming.progressive'.freeze
+
   module Controller
     def self.included(base)
       base.class_eval do
@@ -72,6 +74,7 @@ module TemplateStreaming
           #
           flash  # ensure sweep
           @template_streaming_flash = @_flash
+          request.env[PROGRESSIVE_KEY] = true
 
           run_callbacks :when_streaming_template
         else
@@ -368,3 +371,5 @@ if defined?(Thin)
     end
   end
 end
+
+require 'template_streaming/error_recovery'
