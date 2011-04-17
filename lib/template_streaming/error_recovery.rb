@@ -132,7 +132,7 @@ module TemplateStreaming
 
     module Controller
       def self.included(base)
-        base.when_streaming_template :set_template_streaming_controller
+        base.when_rendering_progressively :set_template_streaming_controller
         base.class_inheritable_accessor :progressive_rendering_error_callbacks
         base.class_inheritable_accessor :progressive_rendering_error_renderer
         base.progressive_rendering_error_callbacks = []

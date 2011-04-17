@@ -559,9 +559,9 @@ describe TemplateStreaming do
     end
   end
 
-  describe "#when_streaming_template" do
+  describe "#when_rendering_progressively" do
     before do
-      TestController.when_streaming_template { |c| c.data.order << :callback }
+      TestController.when_rendering_progressively { |c| c.data.order << :callback }
       view "<% data.order << :rendering %>"
       layout '<%= yield %>'
       data.order = []

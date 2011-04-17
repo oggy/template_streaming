@@ -19,7 +19,7 @@ module TemplateStreaming
         helper_method :flush, :push
 
         include ActiveSupport::Callbacks
-        define_callbacks :when_streaming_template
+        define_callbacks :when_rendering_progressively
       end
     end
 
@@ -76,7 +76,7 @@ module TemplateStreaming
           @template_streaming_flash = @_flash
           request.env[PROGRESSIVE_KEY] = true
 
-          run_callbacks :when_streaming_template
+          run_callbacks :when_rendering_progressively
         else
           render_without_template_streaming(*args, &block)
         end
