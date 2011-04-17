@@ -40,30 +40,20 @@ describe TemplateStreaming do
     end
 
     describe "when not rendering progressively" do
-      before do
-        action do
-          render :progressive => false, :layout => 'layout'
-        end
+      it "should not affect the output" do
+        view "a<% flush %>b"
+        action { render :progressive => false, :layout => nil }
+        run
+        received.should == 'ab'
       end
 
-      it "should do nothing" do
-        view <<-'EOS'.gsub(/^ *\|/, '')
-          |a
-          |<% data.order << :view -%>
-        EOS
-
-        layout <<-'EOS'.gsub(/^ *\|/, '')
-          |1
-          |<% data.order << :layout1 -%>
-          |<%= yield -%>
-          |2
-          |<% data.order << :layout2 -%>
-        EOS
-
+      it "should not invert the layout rendering order" do
+        view "<% data.order << :view -%>"
+        layout "<% data.order << :layout1 -%><%= yield -%><% data.order << :layout2 -%>"
+        action { render :progressive => false, :layout => 'layout' }
         data.order = []
         run
         data.order.should == [:view, :layout1, :layout2]
-        received.should == "1\na\n2\n"
       end
     end
   end
