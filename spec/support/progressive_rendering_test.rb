@@ -1,5 +1,6 @@
 module ProgressiveRenderingTest
-  VIEW_PATH = "#{ROOT}/spec/tmp/views"
+  TMP_PATH = "#{ROOT}/spec/tmp"
+  VIEW_PATH = "#{TMP_PATH}/views"
   COOKIE_SECRET = 'x'*30
 
   def self.included(base)
@@ -8,6 +9,8 @@ module ProgressiveRenderingTest
   end
 
   def setup_progressive_rendering_test
+    push_temporary_directory TMP_PATH
+
     ActionController::Base.session = {:key => "session", :secret => COOKIE_SECRET}
     ActionController::Routing::Routes.clear!
     ActionController::Routing::Routes.add_route('/', :controller => 'test', :action => 'action')
@@ -17,8 +20,6 @@ module ProgressiveRenderingTest
     @log_buffer = ''
     TestController.logger = Logger.new(StringIO.new(@log_buffer))
 
-    FileUtils.rm_rf VIEW_PATH
-    FileUtils.mkdir_p VIEW_PATH
     $current_spec = self
     @data = OpenStruct.new
   end
@@ -29,6 +30,7 @@ module ProgressiveRenderingTest
 
   def teardown_progressive_rendering_test
     pop_constant_value Object, :TestController
+    pop_temporary_directory
     FileUtils.rm_rf VIEW_PATH
     $current_spec = nil
   end
