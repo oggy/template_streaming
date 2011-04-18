@@ -1061,4 +1061,27 @@ describe TemplateStreaming do
       end
     end
   end
+
+  describe "the default error rendering callback" do
+    before do
+      TestController.class_eval do
+        def rescue_action(exception)
+          # Run the default handler.
+          ActionController::Base.instance_method(:rescue_action).bind(self).call(exception)
+        end
+
+        def local_request?
+          true
+        end
+      end
+    end
+
+    it "should render the standard error information" do
+      view "<% raise 'test exception' %>"
+      action { render :progressive => true }
+      run
+      received.should include('test exception')
+      received.should include('#uncaught_exceptions')
+    end
+  end
 end

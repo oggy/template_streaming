@@ -125,7 +125,7 @@ module TemplateStreaming
 
         def render_exceptions(exceptions)
           template = @controller.response.template
-          template.render_exceptions(exceptions)
+          template.render_progressive_exceptions(exceptions)
         end
       end
     end
@@ -200,19 +200,29 @@ module TemplateStreaming
         end
       end
 
-      def render_exceptions(exceptions)
+      def render_progressive_exceptions(exceptions)
         controller.progressive_rendering_error_renderer.call(self, exceptions)
+      end
+
+      def render_default_progressive_exceptions(exceptions)
+        # Ensure errors in the error rendering don't recurse.
+        @rendering_default_progressive_exceptions = true
+        begin
+          @content = exceptions.map do |exception|
+            template_path = ActionController::Rescue::RESCUES_TEMPLATE_PATH
+            @exception = exception
+            @rescues_path = template_path
+            render :file => "#{template_path}/rescues/template_error.erb"
+          end.join
+          render :file => "#{File.dirname(__FILE__)}/templates/errors.erb"
+        ensure
+          @rendering_default_progressive_exceptions = false
+        end
       end
     end
 
     DEFAULT_ERROR_RENDERER = lambda do |view, exceptions|
-      @content = exceptions.map do |exception|
-        template_path = ActionController::Rescue::RESCUES_TEMPLATE_PATH
-        @exception = exception
-        @rescues_path = template_path
-        view.render :file => "#{template_path}/rescues/template_error.erb"
-      end.join
-      view.render :file => "#{File.dirname(__FILE__)}/templates/errors.erb"
+      view.render_default_progressive_exceptions(exceptions)
     end
 
     ActionController::Dispatcher.middleware.insert_after ActionController::Failsafe, Middleware
