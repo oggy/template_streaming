@@ -1,6 +1,5 @@
 module ProgressiveRenderingTest
-  TMP_PATH = "#{ROOT}/spec/tmp"
-  VIEW_PATH = "#{TMP_PATH}/views"
+  VIEW_PATH = "#{TMP}/views"
   COOKIE_SECRET = 'x'*30
 
   def self.included(base)
@@ -9,7 +8,7 @@ module ProgressiveRenderingTest
   end
 
   def setup_progressive_rendering_test
-    push_temporary_directory TMP_PATH
+    push_temporary_directory TMP
 
     ActionController::Base.session = {:key => "session", :secret => COOKIE_SECRET}
     ActionController::Routing::Routes.clear!

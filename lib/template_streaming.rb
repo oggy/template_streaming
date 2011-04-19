@@ -373,3 +373,4 @@ if defined?(Thin)
 end
 
 require 'template_streaming/error_recovery'
+require 'template_streaming/caching'

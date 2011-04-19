@@ -11,7 +11,7 @@ module TemplateStreaming
       def call(env)
         response = *@app.call(env)
         if env[TemplateStreaming::PROGRESSIVE_KEY]
-          response[2] = BodyProxy.new(env, response[2].body)
+          response[2] = BodyProxy.new(env, response[2])
           response
         else
           response
