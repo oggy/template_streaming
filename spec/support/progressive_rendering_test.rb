@@ -15,6 +15,9 @@ module ProgressiveRenderingTest
     ActionController::Routing::Routes.add_route('/', :controller => 'test', :action => 'action')
 
     push_constant_value Object, :TestController, Class.new(Controller)
+    # Since we use Class.new, the class name is undefined in AC::Layout's
+    # inherited hook, and so layout is not automatically called - do it now.
+    TestController.layout('test', {}, true)
     TestController.view_paths = [VIEW_PATH]
     @log_buffer = ''
     TestController.logger = Logger.new(StringIO.new(@log_buffer))
