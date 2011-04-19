@@ -576,6 +576,20 @@ describe TemplateStreaming do
     end
   end
 
+  class BlackHoleSessionStore < ActionController::Session::AbstractStore
+    def get_session(env, sid)
+      ['id', {}]
+    end
+
+    def set_session(env, sid, data)
+      true
+    end
+
+    def destroy(env)
+      true
+    end
+  end
+
   describe "#flash" do
     describe "when rendering progressively" do
       it "should behave correctly when referenced in the controller" do
@@ -612,6 +626,22 @@ describe TemplateStreaming do
 
         run('HTTP_COOKIE' => session_cookie)
         received.should == chunks('()', :end => true)
+      end
+
+      it "should be frozen in the view if the session is sent with the headers" do
+        view "<% data.frozen = flash.frozen? %>"
+        action { render :progressive => true }
+        run
+        data.frozen.should be_true
+      end
+
+      it "should not be frozen in the view if the session is not sent with the headers" do
+        with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
+          view "<% data.frozen = flash.frozen? %>"
+          action { render :progressive => true }
+          run
+          data.frozen.should be_false
+        end
       end
     end
 
@@ -650,6 +680,13 @@ describe TemplateStreaming do
 
       run('HTTP_COOKIE' => session_cookie)
       received.should == '()'
+    end
+
+    it "should not be frozen in the view" do
+      view "<% data.frozen = flash.frozen? %>"
+      action { render :progressive => false }
+      run
+      data.frozen.should be_false
     end
   end
 
@@ -713,6 +750,64 @@ describe TemplateStreaming do
 
       run('HTTP_COOKIE' => session_cookie)
       received.should == '()'
+    end
+  end
+
+  describe "#cookies" do
+    describe "when rendering progressively" do
+      it "should be frozen in the view" do
+        view "<% data.frozen = cookies.frozen? %>"
+        action { render :progressive => true }
+        run
+        data.frozen.should be_true
+      end
+
+      it "should be frozen in the view irrespective of session store" do
+        with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
+          view "<% data.frozen = cookies.frozen? %>"
+          action { render :progressive => true }
+          run
+          data.frozen.should be_true
+        end
+      end
+    end
+
+    describe "when not rendering progressively" do
+      it "should not be frozen in the view" do
+        view "<% data.frozen = session.frozen? %>"
+        action { render :progressive => false }
+        run
+        data.frozen.should be_false
+      end
+    end
+  end
+
+  describe "#session" do
+    describe "when rendering progressively" do
+      it "should be frozen in the view if the session is sent with the headers" do
+        view "<% data.frozen = session.frozen? %>"
+        action { render :progressive => true }
+        run
+        data.frozen.should be_true
+      end
+
+      it "should not be frozen in the view if the session is not sent with the headers" do
+        with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
+          view "<% data.frozen = session.frozen? %>"
+          action { render :progressive => true }
+          run
+          data.frozen.should be_false
+        end
+      end
+    end
+
+    describe "when not rendering progressively" do
+      it "should not be frozen in the view" do
+        view "<% data.frozen = session.frozen? %>"
+        action { render :progressive => false }
+        run
+        data.frozen.should be_false
+      end
     end
   end
 

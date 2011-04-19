@@ -50,6 +50,12 @@ module TemplateStreaming
           @template.render_progressively = true
           @performed_render = true
           @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
+            cookies.freeze
+            if self.class.session_store.sent_with_headers?
+              session.freeze
+              flash.freeze
+            end
+
             @performed_render = false
             last_piece = render_without_template_streaming(*args, &block)
             # The original render will clobber our response.body, so
@@ -336,10 +342,24 @@ module TemplateStreaming
     end
   end
 
+  module AbstractSessionStoreExtension
+    def sent_with_headers?
+      false
+    end
+  end
+
+  module CookieSessionStoreExtension
+    def sent_with_headers?
+      true
+    end
+  end
+
   ActionView::Base.send :include, View
   ActionController::Base.send :include, Controller
   ActionController::Response.send :include, Response
   ActionController::Dispatcher.middleware.insert 0, Rack::Chunked
+  ActionController::Session::AbstractStore.extend AbstractSessionStoreExtension
+  ActionController::Session::CookieStore.extend CookieSessionStoreExtension
 end
 
 # Please let there be a better way to do this...
