@@ -144,6 +144,8 @@ module TemplateStreaming
       render_stack_height == 1 or
         return false
 
+      return false if rendered_action_cache
+
       (render_options = render_args.last).is_a?(Hash) or
         render_options = {}
 
@@ -298,7 +300,6 @@ module TemplateStreaming
         end
       end
       begin
-        # TODO: what is @cached_content_for_layout in base.rb ?
         yield
       ensure
         @_proc_for_layout = original_proc_for_layout
