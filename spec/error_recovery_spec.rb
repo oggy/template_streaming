@@ -1,7 +1,7 @@
 require 'spec/spec_helper'
 
 describe TemplateStreaming::ErrorRecovery do
-  include ProgressiveRenderingTest
+  include StreamingApp
 
   describe "when there is an error during rendering" do
     before do
@@ -13,7 +13,7 @@ describe TemplateStreaming::ErrorRecovery do
       end
     end
 
-    describe "when not progressively rendering" do
+    describe "when not streaming" do
       it "should show the standard error page" do
         view "<% raise 'test exception' %>"
         run
@@ -22,9 +22,9 @@ describe TemplateStreaming::ErrorRecovery do
       end
     end
 
-    describe "when progressively rendering" do
+    describe "when streaming" do
       before do
-        controller.render_errors_progressively_with do |view, exceptions|
+        controller.render_streaming_errors_with do |view, exceptions|
           messages = exceptions.map { |e| e.original_exception.message }
           "(#{messages.join(',')})"
         end
@@ -41,13 +41,13 @@ describe TemplateStreaming::ErrorRecovery do
 
         it "should run the error callback for each error raised" do
           messages = []
-          controller.on_progressive_rendering_error do |error|
+          controller.on_streaming_error do |error|
             messages << error.original_exception.message
           end
           view "<% render :partial => 'a' %><% render :partial => 'b' %>"
           template 'test/_a', "<% raise 'a' %>"
           template 'test/_b', "<% raise 'b' %>"
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           run
           messages.should == ['a', 'b']
         end
@@ -55,7 +55,7 @@ describe TemplateStreaming::ErrorRecovery do
         describe "when a structurally-complete response is rendered" do
           before do
             view "<% raise 'x' %>"
-            action { render :progressive => true, :layout => 'layout' }
+            action { render :stream => true, :layout => 'layout' }
           end
 
           it "should inject errors correctly when the error occurs before the doctype" do
@@ -109,7 +109,7 @@ describe TemplateStreaming::ErrorRecovery do
 
         describe "when an structurally-incomplete response is rendered" do
           before do
-            action { render :progressive => true, :layout => nil }
+            action { render :stream => true, :layout => nil }
           end
 
           it "should inject errors correctly when nothing is rendered" do
@@ -157,7 +157,7 @@ describe TemplateStreaming::ErrorRecovery do
 
         describe "when the response consists of multiple templates" do
           before do
-            action { render :progressive => true, :layout => 'layout' }
+            action { render :stream => true, :layout => 'layout' }
           end
 
           it "should inject errors when there is an error in the toplevel layout" do
@@ -214,13 +214,13 @@ describe TemplateStreaming::ErrorRecovery do
 
         it "should run the error callback for each error raised" do
           messages = []
-          controller.on_progressive_rendering_error do |error|
+          controller.on_streaming_error do |error|
             messages << error.original_exception.message
           end
           view "<% render :partial => 'a' %><% render :partial => 'b' %>"
           template 'test/_a', "<% raise 'a' %>"
           template 'test/_b', "<% raise 'b' %>"
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           run
           messages.should == ['a', 'b']
         end
@@ -228,7 +228,7 @@ describe TemplateStreaming::ErrorRecovery do
         it "should not inject any error information" do
           layout "<!DOCTYPE html><html><head></head><body><% flush %><%= yield %></body></html>"
           view "...<% raise 'x' %>..."
-          action { render :progressive => true, :layout => 'layout' }
+          action { render :stream => true, :layout => 'layout' }
           run
           received.should == chunks("<!DOCTYPE html><html><head></head><body>", "</body></html>", :end => true)
         end
@@ -252,7 +252,7 @@ describe TemplateStreaming::ErrorRecovery do
 
     it "should render the standard error information" do
       view "<% raise 'test exception' %>"
-      action { render :progressive => true }
+      action { render :stream => true }
       run
       received.should include('test exception')
       received.should include('#uncaught_exceptions')

@@ -1,9 +1,9 @@
 require 'spec/spec_helper'
 
 describe TemplateStreaming::Autoflushing do
-  include ProgressiveRenderingTest
+  include StreamingApp
 
-  describe "when rendering progressively" do
+  describe "when streaming" do
     describe "when autoflushing is on" do
       use_attribute_value TemplateStreaming, :autoflush, 0
 
@@ -11,7 +11,7 @@ describe TemplateStreaming::Autoflushing do
         layout "[<%= yield %>]"
         view "(<%= render :partial => 'partial' %>)"
         partial 'partial'
-        action { render :progressive => true, :layout => 'layout' }
+        action { render :stream => true, :layout => 'layout' }
         run
         received.should == chunks('[', '(', 'partial', ')', ']', :end => true)
       end
@@ -22,7 +22,7 @@ describe TemplateStreaming::Autoflushing do
         partial "{<%= render :layout => 'subpartial_layout', :partial => 'subpartial' %>}"
         template 'test/_subpartial_layout', '<<%= yield %>>'
         template 'test/_subpartial', 'subpartial'
-        action { render :progressive => true, :layout => 'layout' }
+        action { render :stream => true, :layout => 'layout' }
         run
         received.should == chunks('[', '(', '{', '<', 'subpartial', '>', '}', ')', ']', :end => true)
       end
@@ -33,7 +33,7 @@ describe TemplateStreaming::Autoflushing do
         partial "{<% render :layout => 'subpartial_layout' do %>`<%= render :partial => 'subpartial' %>'<% end %>}"
         template 'test/_subpartial_layout', '<<%= yield %>>'
         template 'test/_subpartial', 'subpartial'
-        action { render :progressive => true, :layout => 'layout' }
+        action { render :stream => true, :layout => 'layout' }
         run
         received.should == chunks('[', '(', '{', '<', '`', 'subpartial', '\'', '>', '}', ')', ']', :end => true)
       end
@@ -42,7 +42,7 @@ describe TemplateStreaming::Autoflushing do
         layout "[<%= yield %>][<%= yield %>]"
         view "(<%= render :partial => 'partial' %>)(<%= render :partial => 'partial' %>)"
         partial 'partial'
-        action { render :progressive => true, :layout => 'layout' }
+        action { render :stream => true, :layout => 'layout' }
         run
         received.should == chunks('[', '(', 'partial', ')(', 'partial', ')', '][', '(', 'partial', ')(', 'partial', ')', ']', :end => true)
       end
@@ -60,12 +60,12 @@ describe TemplateStreaming::Autoflushing do
             |<%= Time.stub(:now).and_return(data.t + 0.3); render :partial => 'c' -%>
             |<%= 4 -%>
           EOS
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           template 'test/_a', 'a'
           template 'test/_b', 'b'
           template 'test/_c', 'c'
           template 'test/_d', 'd'
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           run
           received.should == chunks('1', 'a2b3', 'c4', :end => true)
         end

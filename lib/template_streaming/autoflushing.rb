@@ -1,8 +1,8 @@
 module TemplateStreaming
   class << self
     #
-    # If non-nil, #flush will automatically be called when rendering
-    # progressively before and after each render call.
+    # If non-nil, #flush will automatically be called when streaming
+    # before and after each render call.
     #
     # The value of this attribute should be a number, which is the
     # number of milliseconds since the last flush that should elapse
@@ -25,7 +25,7 @@ module TemplateStreaming
 
       def capture(*args, &block)
         if block == @_proc_for_layout
-          # Rendering the content of a progressive layout - inject autoflushing.
+          # Rendering the content of a streamed layout - inject autoflushing.
           with_autoflushing do
             super
           end
@@ -53,7 +53,7 @@ module TemplateStreaming
 
       def call(env)
         response = @app.call(env)
-        if env[PROGRESSIVE_KEY] && TemplateStreaming.autoflush
+        if env[STREAMING_KEY] && TemplateStreaming.autoflush
           response[2] = BodyProxy.new(response[2])
         end
         response

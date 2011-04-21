@@ -10,4 +10,4 @@ require 'action_controller'
 require 'template_streaming'
 require 'temporaries'
 
-require 'support/progressive_rendering_test'
+require 'support/streaming_app'

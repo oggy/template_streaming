@@ -7,7 +7,7 @@ module TemplateStreaming
     end
   end
 
-  PROGRESSIVE_KEY = 'template_streaming.progressive'.freeze
+  STREAMING_KEY = 'template_streaming.streaming'.freeze
 
   module Controller
     def self.included(base)
@@ -19,37 +19,37 @@ module TemplateStreaming
         helper_method :flush, :push
 
         include ActiveSupport::Callbacks
-        define_callbacks :when_rendering_progressively
+        define_callbacks :when_streaming_template
       end
     end
 
     module ClassMethods
-      def render_progressively(options={})
-        before_filter :action_renders_progressively, options
+      def stream(options={})
+        before_filter :action_streams, options
       end
     end
 
-    def action_renders_progressively
-      @action_progressively_renders = true
+    def action_streams
+      @action_streams = true
     end
 
-    def action_renders_progressively?
-      @action_progressively_renders
+    def action_streams?
+      @action_streams
     end
 
     def render_with_template_streaming(*args, &block)
       options = args.first { |a| a.is_a?(Hash) }
-      if options && options.size == 1 && options.key?(:progressive)
+      if options && options.size == 1 && options.key?(:stream)
         # Need to set the default values, since the standard #render won't.
         options[:template] = default_template
         options[:layout] = true
       end
       push_render_stack_frame do |stack_height|
-        if start_rendering_progressively?(stack_height, *args)
-          @render_progressively = true
-          @template.render_progressively = true
+        if start_streaming_template?(stack_height, *args)
+          @streaming_template = true
+          @template.streaming_template = true
           @performed_render = true
-          @streaming_body = StreamingBody.new(progressive_rendering_threshold) do
+          @streaming_body = StreamingBody.new(template_streaming_threshold) do
             cookies.freeze
             if self.class.session_store.sent_with_headers?
               session.freeze
@@ -76,13 +76,13 @@ module TemplateStreaming
           # would cause the flash to be referenced again, sweeping the
           # flash a second time. To prevent this, we preserve the
           # flash in a separate ivar, and patch #flash to return this
-          # if we're rendering progressively.
+          # if we're streaming.
           #
           flash  # ensure sweep
           @template_streaming_flash = @_flash
-          request.env[PROGRESSIVE_KEY] = true
+          request.env[STREAMING_KEY] = true
 
-          run_callbacks :when_rendering_progressively
+          run_callbacks :when_streaming_template
         else
           render_without_template_streaming(*args, &block)
         end
@@ -130,8 +130,8 @@ module TemplateStreaming
       @template_streaming_flash
     end
 
-    def render_progressively?
-      @render_progressively
+    def streaming_template?
+      @streaming_template
     end
 
     private # --------------------------------------------------------
@@ -146,7 +146,7 @@ module TemplateStreaming
       end
     end
 
-    def start_rendering_progressively?(render_stack_height, *render_args)
+    def start_streaming_template?(render_stack_height, *render_args)
       render_stack_height == 1 or
         return false
 
@@ -158,9 +158,9 @@ module TemplateStreaming
       if !(UNSTREAMABLE_KEYS & render_options.keys).empty? || render_args.first == :update
         false
       else
-        explicit_option = render_options[:progressive]
+        explicit_option = render_options[:stream]
         if explicit_option.nil?
-          action_renders_progressively?
+          action_streams?
         else
           explicit_option
         end
@@ -173,7 +173,7 @@ module TemplateStreaming
     # The number of bytes that must be received by the client before
     # anything will be rendered.
     #
-    def progressive_rendering_threshold
+    def template_streaming_threshold
       content_type = response.header['Content-type']
       content_type.nil? || content_type =~ %r'\Atext/html' or
         return 0
@@ -239,7 +239,7 @@ module TemplateStreaming
 
     def render_with_template_streaming(*args, &block)
       options = args.first
-      if render_progressively? && options.is_a?(Hash)
+      if streaming_template? && options.is_a?(Hash)
         # These branches exist to handle the case where AC::Base#render calls
         # AV::Base#render for rendering a partial with a layout. AC::Base
         # renders the partial then the layout separately, but we need to render
@@ -251,8 +251,8 @@ module TemplateStreaming
           return DeferredPartialRender.new(args)
         elsif options[:text].is_a?(DeferredPartialRender)
           render = options.delete(:text)
-          # We patch the case of rendering :partial with :layout
-          # progressively in _render_with_layout.
+          # We patch the case of rendering :partial with :layout while
+          # streaming in _render_with_layout.
           return render(render.args.first.merge(:layout => options[:layout]))
         end
       end
@@ -261,14 +261,14 @@ module TemplateStreaming
 
     DeferredPartialRender = Struct.new(:args)
 
-    attr_writer :render_progressively
+    attr_writer :streaming_template
 
-    def render_progressively?
-      @render_progressively
+    def streaming_template?
+      @streaming_template
     end
 
     def _render_with_layout_with_template_streaming(options, local_assigns, &block)
-      if !render_progressively?
+      if !streaming_template?
         _render_with_layout_without_template_streaming(options, local_assigns, &block)
       elsif block_given?
         # The standard method doesn't properly restore @_proc_for_layout. Do it ourselves.

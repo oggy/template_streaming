@@ -47,7 +47,7 @@ module TemplateStreaming
       end
 
       def after_with_template_streaming_caching(controller)
-        if controller.render_progressively?
+        if controller.streaming_template?
           # This flag is ass-backwards to me. It really means *don't* cache the layout...
           cache_layout? and
             raise NotImplementedError, "sorry, using caches_action with :layout => false is not yet supported by Template Streaming"

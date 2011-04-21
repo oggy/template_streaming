@@ -1,7 +1,7 @@
 require 'spec/spec_helper'
 
 describe TemplateStreaming::Caching do
-  include ProgressiveRenderingTest
+  include StreamingApp
 
   describe "page caching" do
     use_attribute_value ActionController::Base, :page_cache_directory, "#{TMP}/page_cache"
@@ -9,7 +9,7 @@ describe TemplateStreaming::Caching do
 
     before do
       controller.caches_page :action
-      action { render :progressive => true }
+      action { render :stream => true }
       view "a<% flush %>b"
     end
 
@@ -29,7 +29,7 @@ describe TemplateStreaming::Caching do
       pop_attribute_value ActionController::Base, :cache_store
     end
 
-    describe "when rendering progressively" do
+    describe "when streaming" do
       describe "when no layout is used" do
         before do
           controller.caches_action :action
@@ -37,14 +37,14 @@ describe TemplateStreaming::Caching do
 
         it "should render the page correctly" do
           view "a<% flush %>b"
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           run
           received.should == chunks('a', 'b', :end => true)
         end
 
         it "should use the cached copy if it exists" do
           view "<% data.render_count += 1 %>a<% flush %>b"
-          action { render :progressive => true, :layout => nil }
+          action { render :stream => true, :layout => nil }
           data.render_count = 0
           run
           run
@@ -54,11 +54,11 @@ describe TemplateStreaming::Caching do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       describe "when no layout is used" do
         before do
           controller.caches_action :action
-          action { render :progressive => false, :layout => nil }
+          action { render :stream => false, :layout => nil }
         end
 
         it "should render the page correctly" do
@@ -80,7 +80,7 @@ describe TemplateStreaming::Caching do
       describe "when the layout is cached" do
         before do
           controller.caches_action :action, :layout => true
-          action { render :progressive => false, :layout => 'layout' }
+          action { render :stream => false, :layout => 'layout' }
         end
 
         it "should cache the layout" do
@@ -104,7 +104,7 @@ describe TemplateStreaming::Caching do
           # AC always does render(:layout => true) to render the layout when the
           # body is cached, even if an explicit layout name is given. Hence, our
           # layout name must match the controller name.
-          action { render :progressive => false, :layout => 'test' }
+          action { render :stream => false, :layout => 'test' }
         end
 
         it "should not cache the layout" do

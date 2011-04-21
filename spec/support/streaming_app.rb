@@ -1,13 +1,13 @@
-module ProgressiveRenderingTest
+module StreamingApp
   VIEW_PATH = "#{TMP}/views"
   COOKIE_SECRET = 'x'*30
 
   def self.included(base)
-    base.before { setup_progressive_rendering_test }
-    base.after { teardown_progressive_rendering_test }
+    base.before { setup_streaming_app }
+    base.after { teardown_streaming_app }
   end
 
-  def setup_progressive_rendering_test
+  def setup_streaming_app
     push_temporary_directory TMP
 
     ActionController::Base.session = {:key => "session", :secret => COOKIE_SECRET}
@@ -30,7 +30,7 @@ module ProgressiveRenderingTest
     TestController
   end
 
-  def teardown_progressive_rendering_test
+  def teardown_streaming_app
     pop_constant_value Object, :TestController
     pop_temporary_directory
     FileUtils.rm_rf VIEW_PATH

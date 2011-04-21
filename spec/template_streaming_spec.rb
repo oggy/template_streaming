@@ -1,13 +1,13 @@
 require 'spec/spec_helper'
 
 describe TemplateStreaming do
-  include ProgressiveRenderingTest
+  include StreamingApp
 
   describe "#flush" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       before do
         action do
-          render :progressive => true, :layout => 'layout'
+          render :stream => true, :layout => 'layout'
         end
       end
 
@@ -39,10 +39,10 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should not affect the output" do
         view "a<% flush %>b"
-        action { render :progressive => false, :layout => nil }
+        action { render :stream => false, :layout => nil }
         run
         received.should == 'ab'
       end
@@ -50,7 +50,7 @@ describe TemplateStreaming do
       it "should not invert the layout rendering order" do
         view "<% data.order << :view -%>"
         layout "<% data.order << :layout1 -%><%= yield -%><% data.order << :layout2 -%>"
-        action { render :progressive => false, :layout => 'layout' }
+        action { render :stream => false, :layout => 'layout' }
         data.order = []
         run
         data.order.should == [:view, :layout1, :layout2]
@@ -59,10 +59,10 @@ describe TemplateStreaming do
   end
 
   describe "#push" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       before do
         action do
-          render :progressive => true, :layout => 'layout'
+          render :stream => true, :layout => 'layout'
         end
       end
 
@@ -79,10 +79,10 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       before do
         action do
-          render :progressive => false, :layout => 'layout'
+          render :stream => false, :layout => 'layout'
         end
       end
 
@@ -100,10 +100,10 @@ describe TemplateStreaming do
   end
 
   describe "response headers" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       before do
         action do
-          render :progressive => true, :layout => nil
+          render :stream => true, :layout => nil
         end
       end
 
@@ -120,10 +120,10 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       before do
         action do
-          render :progressive => false, :layout => nil
+          render :stream => false, :layout => nil
         end
       end
 
@@ -141,44 +141,44 @@ describe TemplateStreaming do
     end
   end
 
-  describe ".render_progressively" do
+  describe ".stream" do
     before do
       TestController.layout 'layout'
       layout "[<% flush %><%= yield %>]"
       view "a"
     end
 
-    it "should render all actions progressively if no options are given" do
-      TestController.render_progressively
+    it "should stream all actions if no options are given" do
+      TestController.stream
       run
       received.should == chunks('[', 'a]', :end => true)
     end
 
-    it "should render the action progressively if it is included with :only" do
-      TestController.render_progressively :only => :action
+    it "should stream the action if it is included with :only" do
+      TestController.stream :only => :action
       run
       received.should == chunks('[', 'a]', :end => true)
     end
 
-    it "should not render the action progressively if it is excepted" do
-      TestController.render_progressively :except => :action
+    it "should not stream the action if it is excepted" do
+      TestController.stream :except => :action
       run
       received.should == "[a]"
     end
 
-    it "should be overridden to true by an explicit :progressive => true when rendering" do
-      TestController.render_progressively :except => :action
+    it "should be overridden to true by an explicit :stream => true when rendering" do
+      TestController.stream :except => :action
       action do
-        render :progressive => true
+        render :stream => true
       end
       run
       received.should == chunks('[', 'a]', :end => true)
     end
 
-    it "should be overridden to false by an explicit :progressive => false when rendering" do
-      TestController.render_progressively :only => :action
+    it "should be overridden to false by an explicit :stream => false when rendering" do
+      TestController.stream :only => :action
       action do
-        render :progressive => false
+        render :stream => false
       end
       run
       received.should == "[a]"
@@ -186,9 +186,9 @@ describe TemplateStreaming do
   end
 
   describe "#render in the controller" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       before do
-        @render_options = {:progressive => true}
+        @render_options = {:stream => true}
         view "(<% flush %><%= render :partial => 'partial' %>)"
         partial "a<% flush %>b"
       end
@@ -199,7 +199,7 @@ describe TemplateStreaming do
           layout "[<% flush %><%= yield %>]"
         end
 
-        it "should render templates specified with :action progressively" do
+        it "should stream templates specified with :action" do
           render_options = @render_options
           action do
             render render_options.merge(:action => 'action')
@@ -208,7 +208,7 @@ describe TemplateStreaming do
           received.should == chunks('[', '(', 'a', 'b)]', :end => true)
         end
 
-        it "should render templates specified with :partial progressively" do
+        it "should stream templates specified with :partial" do
           render_options = @render_options
           action do
             render render_options.merge(:partial => 'partial')
@@ -217,7 +217,7 @@ describe TemplateStreaming do
           received.should == chunks('[', 'a', 'b]', :end => true)
         end
 
-        it "should render :inline templates progressively" do
+        it "should stream :inline templates" do
           render_options = @render_options
           action do
             render render_options.merge(:inline => "a<% flush %>b")
@@ -232,7 +232,7 @@ describe TemplateStreaming do
           @render_options[:layout] = nil
         end
 
-        it "should render templates specified with :action progressively" do
+        it "should stream templates specified with :action" do
           render_options = @render_options
           action do
             render render_options.merge(:action => 'action')
@@ -241,7 +241,7 @@ describe TemplateStreaming do
           received.should == chunks('(', 'a', 'b)', :end => true)
         end
 
-        it "should render templates specified with :partial progressively" do
+        it "should stream templates specified with :partial" do
           render_options = @render_options
           action do
             render render_options.merge(:partial => 'partial')
@@ -250,7 +250,7 @@ describe TemplateStreaming do
           received.should == chunks('a', 'b', :end => true)
         end
 
-        it "should render :inline templates progressively" do
+        it "should stream :inline templates" do
           render_options = @render_options
           action do
             render render_options.merge(:inline => "a<% flush %>b")
@@ -339,9 +339,9 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       before do
-        @render_options = {:progressive => false}
+        @render_options = {:stream => false}
         view "(<%= render :partial => 'partial' %>)"
         partial "ab"
       end
@@ -352,7 +352,7 @@ describe TemplateStreaming do
           layout "[<%= yield %>]"
         end
 
-        it "should render templates specified with :action unprogressively" do
+        it "should not stream templates specified with :action" do
           render_options = @render_options
           action do
             render render_options.merge(:action => 'action')
@@ -361,7 +361,7 @@ describe TemplateStreaming do
           received.should == '[(ab)]'
         end
 
-        it "should render templates specified with :partial unprogressively" do
+        it "should not stream templates specified with :partial" do
           render_options = @render_options
           action do
             render render_options.merge(:partial => 'partial')
@@ -370,7 +370,7 @@ describe TemplateStreaming do
           received.should == '[ab]'
         end
 
-        it "should render :inline templates unprogressively" do
+        it "should not stream :inline templates" do
           render_options = @render_options
           action do
             render render_options.merge(:inline => 'ab')
@@ -385,7 +385,7 @@ describe TemplateStreaming do
           @render_options[:layout] = nil
         end
 
-        it "should render templates specified with :action unprogressively" do
+        it "should not stream templates specified with :action" do
           render_options = @render_options
           action do
             render render_options.merge(:action => 'action')
@@ -394,7 +394,7 @@ describe TemplateStreaming do
           received.should == '(ab)'
         end
 
-        it "should render templates specified with :partial unprogressively" do
+        it "should not stream templates specified with :partial" do
           render_options = @render_options
           action do
             render render_options.merge(:partial => 'partial')
@@ -403,7 +403,7 @@ describe TemplateStreaming do
           received.should == 'ab'
         end
 
-        it "should render :inline templates unprogressively" do
+        it "should not stream :inline templates" do
           render_options = @render_options
           action do
             render render_options.merge(:inline => 'ab')
@@ -413,7 +413,7 @@ describe TemplateStreaming do
         end
       end
 
-      it "should render a given :text string unprogressively" do
+      it "should not stream a given :text string" do
         render_options = @render_options
         action do
           render render_options.merge(:text => 'ab')
@@ -423,12 +423,12 @@ describe TemplateStreaming do
       end
     end
 
-    it "should use the standard defaults when only a :progressive option is given" do
+    it "should use the standard defaults when only a :stream option is given" do
       template 'layouts/controller_layout', "[<%= yield %>]"
       TestController.layout 'controller_layout'
       view 'a'
       action do
-        render :progressive => false
+        render :stream => false
       end
       run
       received.should == '[a]'
@@ -436,10 +436,10 @@ describe TemplateStreaming do
   end
 
   describe "#render in the view" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       before do
         action do
-          render :progressive => true, :layout => 'layout'
+          render :stream => true, :layout => 'layout'
         end
         layout "[<% flush %><%= yield %>]"
         template 'test/_partial_layout', "{<% flush %><%= yield %>}"
@@ -460,10 +460,10 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       before do
         action do
-          render :progressive => false, :layout => 'layout'
+          render :stream => false, :layout => 'layout'
         end
         layout "[<%= yield %>]"
         template 'test/_partial_layout', "{<%= yield %>}"
@@ -487,11 +487,11 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the controller" do
     it "should not flush anything out to the client" do
-      TestController.render_progressively
+      TestController.stream
       action do
         @string = render_to_string :partial => 'partial'
         received.should == ''
-        render :progressive => true
+        render :stream => true
       end
       layout "<%= yield %>"
       view "<%= @string %>"
@@ -503,7 +503,7 @@ describe TemplateStreaming do
 
   describe "#render_to_string in the view" do
     it "should not flush anything out to the client" do
-      TestController.render_progressively
+      TestController.stream
       TestController.helper_method :render_to_string
       layout "<%= yield %>"
       view <<-'EOS'.gsub(/^ *\|/, '')
@@ -513,7 +513,7 @@ describe TemplateStreaming do
       EOS
       partial "partial"
       action do
-        render :progressive => true
+        render :stream => true
       end
       run
       received.should == chunks("partial", :end => true)
@@ -524,7 +524,7 @@ describe TemplateStreaming do
     before do
       view "a<% flush %>"
       action do
-        render :progressive => true, :layout => nil
+        render :stream => true, :layout => nil
       end
     end
 
@@ -549,27 +549,27 @@ describe TemplateStreaming do
     end
   end
 
-  describe "#when_rendering_progressively" do
+  describe "#when_streaming_template" do
     before do
-      TestController.when_rendering_progressively { |c| c.data.order << :callback }
+      TestController.when_streaming_template { |c| c.data.order << :callback }
       view "<% data.order << :rendering %>"
       layout '<%= yield %>'
       data.order = []
     end
 
-    it "should be called when rendering progressively" do
+    it "should be called when streaming" do
       action do
         data.order << :action
-        render :progressive => true
+        render :stream => true
       end
       run
       data.order.should == [:action, :callback, :rendering]
     end
 
-    it "should not be called when not rendering progressively" do
+    it "should not be called when not streaming" do
       action do
         data.order << :action
-        render :progressive => false
+        render :stream => false
       end
       run
       data.order.should == [:action, :rendering]
@@ -591,14 +591,14 @@ describe TemplateStreaming do
   end
 
   describe "#flash" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       it "should behave correctly when referenced in the controller" do
         values = []
         view ""
         action do
           flash[:key] = "value" if params[:set]
           values << flash[:key]
-          render :progressive => true
+          render :stream => true
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -614,7 +614,7 @@ describe TemplateStreaming do
         view "(<%= flash[:key] %>)"
         action do
           flash[:key] = "value" if params[:set]
-          render :progressive => true
+          render :stream => true
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -630,7 +630,7 @@ describe TemplateStreaming do
 
       it "should be frozen in the view if the session is sent with the headers" do
         view "<% data.frozen = flash.frozen? %>"
-        action { render :progressive => true }
+        action { render :stream => true }
         run
         data.frozen.should be_true
       end
@@ -638,21 +638,21 @@ describe TemplateStreaming do
       it "should not be frozen in the view if the session is not sent with the headers" do
         with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
           view "<% data.frozen = flash.frozen? %>"
-          action { render :progressive => true }
+          action { render :stream => true }
           run
           data.frozen.should be_false
         end
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should behave correctly when referenced in the controller" do
         values = []
         view ""
         action do
           flash[:key] = "value" if params[:set]
           values << flash[:key]
-          render :progressive => false
+          render :stream => false
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -684,21 +684,21 @@ describe TemplateStreaming do
 
     it "should not be frozen in the view" do
       view "<% data.frozen = flash.frozen? %>"
-      action { render :progressive => false }
+      action { render :stream => false }
       run
       data.frozen.should be_false
     end
   end
 
   describe "#flash.now" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       it "should behave correctly when referenced in the controller" do
         values = []
         view ""
         action do
           flash.now[:key] = "value" if params[:set]
           values << flash[:key]
-          render :progressive => true
+          render :stream => true
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -711,7 +711,7 @@ describe TemplateStreaming do
         view "(<%= flash[:key] %>)"
         action do
           flash.now[:key] = "value" if params[:set]
-          render :progressive => true
+          render :stream => true
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -722,14 +722,14 @@ describe TemplateStreaming do
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should behave correctly when referenced in the controller" do
         values = []
         view ""
         action do
           flash.now[:key] = "value" if params[:set]
           values << flash[:key]
-          render :progressive => false
+          render :stream => false
         end
         run('QUERY_STRING' => 'set=1')
         session_cookie = headers['Set-Cookie'].scan(/^(session=[^;]*)/).first.first
@@ -754,10 +754,10 @@ describe TemplateStreaming do
   end
 
   describe "#cookies" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       it "should be frozen in the view" do
         view "<% data.frozen = cookies.frozen? %>"
-        action { render :progressive => true }
+        action { render :stream => true }
         run
         data.frozen.should be_true
       end
@@ -765,17 +765,17 @@ describe TemplateStreaming do
       it "should be frozen in the view irrespective of session store" do
         with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
           view "<% data.frozen = cookies.frozen? %>"
-          action { render :progressive => true }
+          action { render :stream => true }
           run
           data.frozen.should be_true
         end
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should not be frozen in the view" do
         view "<% data.frozen = session.frozen? %>"
-        action { render :progressive => false }
+        action { render :stream => false }
         run
         data.frozen.should be_false
       end
@@ -783,10 +783,10 @@ describe TemplateStreaming do
   end
 
   describe "#session" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       it "should be frozen in the view if the session is sent with the headers" do
         view "<% data.frozen = session.frozen? %>"
-        action { render :progressive => true }
+        action { render :stream => true }
         run
         data.frozen.should be_true
       end
@@ -794,17 +794,17 @@ describe TemplateStreaming do
       it "should not be frozen in the view if the session is not sent with the headers" do
         with_attribute_value ActionController::Base, :session_store, BlackHoleSessionStore do
           view "<% data.frozen = session.frozen? %>"
-          action { render :progressive => true }
+          action { render :stream => true }
           run
           data.frozen.should be_false
         end
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should not be frozen in the view" do
         view "<% data.frozen = session.frozen? %>"
-        action { render :progressive => false }
+        action { render :stream => false }
         run
         data.frozen.should be_false
       end
@@ -812,13 +812,13 @@ describe TemplateStreaming do
   end
 
   describe "#form_authenticity_token" do
-    describe "when rendering progressively" do
+    describe "when streaming" do
       it "should match what is in the session when referenced in the controller" do
         view ''
         value = nil
         action do
           value = form_authenticity_token
-          render :progressive => true
+          render :stream => true
         end
         run
         session[:_csrf_token].should == value
@@ -827,20 +827,20 @@ describe TemplateStreaming do
       it "should match what is in the session when only referenced in the view" do
         view "<%= form_authenticity_token %>"
         action do
-          render :progressive => true
+          render :stream => true
         end
         run
         received.should == chunks(session[:_csrf_token], :end => true)
       end
     end
 
-    describe "when not rendering progressively" do
+    describe "when not streaming" do
       it "should match what is in the session when referenced in the controller" do
         view ''
         value = nil
         action do
           value = form_authenticity_token
-          render :progressive => false
+          render :stream => false
         end
         run
         session[:_csrf_token].should == value
@@ -849,7 +849,7 @@ describe TemplateStreaming do
       it "should match what is in the session when only referenced in the view" do
         view "<%= form_authenticity_token %>"
         action do
-          render :progressive => false
+          render :stream => false
         end
         run
         received.should == session[:_csrf_token]
@@ -877,7 +877,7 @@ describe TemplateStreaming do
             template 'test/_outer', "outer[<% flush %>#{render_call 'inner_layout', 'inner', inner_style}]"
             template 'test/_inner', "inner"
             action do
-              render :layout => 'layout', :progressive => true
+              render :layout => 'layout', :stream => true
             end
             run
             received.should == chunks('layout[', 'view[', 'outer_layout[', 'outer[', 'inner_layout[', 'inner]]]]]', :end => true)
@@ -894,7 +894,7 @@ describe TemplateStreaming do
           partial "partial"
           template 'test/_partial_layout', 'partial_layout[<% flush %><%= yield %>]'
           action do
-            render :layout => 'layout', :progressive => true
+            render :layout => 'layout', :stream => true
           end
           run
           received.should == chunks('layout[', 'partial_layout[', 'partial]view]', :end => true)
@@ -914,7 +914,7 @@ describe TemplateStreaming do
             template 'test/_inner', 'inner'
             partial "partial"
             action do
-              render :layout => 'layout', :progressive => true
+              render :layout => 'layout', :stream => true
             end
             run
             received.should == chunks('layout[', 'view[', 'outer_layout[', 'inner_layout[', 'inner]outer]]]', :end => true)
