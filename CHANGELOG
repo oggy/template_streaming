@@ -1,4 +1,4 @@
-== LATEST
+== 0.1.0 2011-05-16
 
  * Replace prelayouts with :stream => true option to #render.
  * Controller-level #stream to stream selected actions.
