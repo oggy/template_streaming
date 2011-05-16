@@ -1,7 +1,10 @@
 == LATEST
 
- * Replace prelayouts with :progressive => true option to #render.
+ * Replace prelayouts with :stream => true option to #render.
+ * Controller-level #stream to stream selected actions.
  * Inject errors during rendering to end of body.
+ * Autoflushing.
+ * Fix page and action caching for streamed responses.
  * New Relic support.
 
 == 0.0.11 2010-05-10
