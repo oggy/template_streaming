@@ -38,8 +38,8 @@ module TemplateStreaming
     end
 
     def render_with_template_streaming(*args, &block)
-      options = args.first { |a| a.is_a?(Hash) }
-      if options && options.size == 1 && options.key?(:stream)
+      options = args.extract_options!
+      if options.key?(:stream)
         # Need to set the default values, since the standard #render won't.
         options[:template] = default_template
         options[:layout] = true
