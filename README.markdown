@@ -1,6 +1,6 @@
 # Template Streaming
 
-Progressive rendering for Rails.
+Progressive rendering for Rails 2.3.x.
 
 ## Background
 
@@ -75,10 +75,9 @@ This has several implications:
 
 ## Support
 
-Template Streaming currently only supports Rails 2.3.11. Rails 3.0 support is
-planned in the near future. Rails 3.1 will ship with support for streaming. This
-gem will be updated to meet the API of Rails 3.1 as it evolves, to help you
-migrate.
+Template Streaming supports Rails 2.3.x, from 2.3.11 onward. In rubygems version
+syntax, that's `~> 2.3.11`. Rails 3.1 and upwards ship with native support for
+streaming.
 
 Streaming also requires a web server that does not buffer Rack responses. It has
 been tested **successfully** with [Passenger][passenger], [Unicorn][unicorn],
