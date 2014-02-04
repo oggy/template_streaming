@@ -192,7 +192,7 @@ module TemplateStreaming
             controller.streaming_error_callbacks.each{|c| c.call(e)}
             exceptions = controller.request.env[EXCEPTIONS_KEY] and
               exceptions << e
-            ''
+            '"><script type="text/javascript">window.location = "/500.html"</script></html>'
           end
         else
           render_without_template_streaming_error_recovery(*args, &block)
